@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  # ReductrAI Proxy - Main service
+  proxy:
+    build:
+      context: ../reductrai-proxy
+      dockerfile: Dockerfile.prod
+    container_name: reductrai-proxy
+    ports:
+      - "8080:8080"
+    environment:
+      - REDUCTRAI_LICENSE_KEY=${REDUCTRAI_LICENSE_KEY}
+      - NODE_ENV=production
+      - REDUCTRAI_COMPRESSION=true
+      - REDUCTRAI_COMPRESSION_LEVEL=heavy
+      # Proxy mode configuration
+      - PROXY_MODE=sample
+      - SAMPLE_RATE=0.1
+      # Backend services (optional)
+      - DATADOG_API_KEY=${DATADOG_API_KEY:-}
+      - DATADOG_ENDPOINT=${DATADOG_ENDPOINT:-https://api.datadoghq.com}
+      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY:-}
+      - PROMETHEUS_ENDPOINT=${PROMETHEUS_ENDPOINT:-}
+      # Forward destination - where to send metrics
+      - FORWARD_TO=https://api.datadoghq.com
+      # AI Query service endpoint
+      - LOCAL_LLM_ENDPOINT=http://ai-query:8081
+    volumes:
+      - reductrai-data:/app/data
+    networks:
+      - reductrai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Dashboard UI
+  dashboard:
+    build:
+      context: ../reductrai-dashboard
+      dockerfile: Dockerfile
+    container_name: reductrai-dashboard
+    ports:
+      - "5173:80"
+    environment:
+      - VITE_API_URL=http://proxy:8080
+    depends_on:
+      - proxy
+    networks:
+      - reductrai
+    restart: unless-stopped
+
+  # Ollama LLM Service
+  ollama:
+    image: ollama/ollama:latest
+    container_name: reductrai-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - reductrai
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # AI Query Service (Optional - for local LLM)
+  ai-query:
+    build:
+      context: ../reductrai-ai-query
+      dockerfile: Dockerfile
+    container_name: reductrai-ai-query
+    ports:
+      - "8081:8081"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - AI_MODEL=${AI_MODEL:-mistral}
+      - AI_QUERY_PORT=8081
+    volumes:
+      - ai-models:/models
+      - reductrai-data:/app/data
+    networks:
+      - reductrai
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+networks:
+  reductrai:
+    driver: bridge
+
+volumes:
+  reductrai-data:
+    driver: local
+  ai-models:
+    driver: local
+  ollama-data:
+    driver: local
