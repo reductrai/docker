@@ -7,20 +7,55 @@ Official Docker images and deployment configurations for ReductrAI - AI SRE Prox
 ```bash
 # 1. Configure environment
 cp .env.example .env
-# Edit .env with your license key (use RF-DEMO-2025 for trial)
 
-# 2. Start all services
+# 2. Edit .env with YOUR credentials:
+#    - REDUCTRAI_LICENSE_KEY (use RF-DEMO-2025 for trial)
+#    - DATADOG_API_KEY (or your monitoring service API key)
+nano .env
+
+# 3. Start all services
 docker-compose up -d --build
 
-# 3. Wait for services to be healthy (30-60 seconds)
+# 4. Wait for services to be healthy (30-60 seconds)
 docker ps
 
-# 4. Access services
+# 5. Point your apps to ReductrAI instead of Datadog
+#    BEFORE: DD_AGENT_HOST=api.datadoghq.com
+#    AFTER:  DD_AGENT_HOST=localhost:8080
+
+# 6. Access services
 # Dashboard: http://localhost:5173
 # Proxy API: http://localhost:8080
 # AI Query:  http://localhost:8081
 # Health:    http://localhost:8080/health
 ```
+
+## How ReductrAI Saves You Money
+
+**The Problem:** Datadog/NewRelic/etc charge based on data volume. More metrics = higher bills.
+
+**The ReductrAI Solution:**
+
+```
+BEFORE ReductrAI:
+Your Apps → Datadog
+           (100% of data, $10,000/month)
+
+AFTER ReductrAI:
+Your Apps → ReductrAI Proxy → ┌─ Local Storage (100%, compressed, AI-queryable)
+                               └─ Datadog (10% sampled, $1,000/month)
+```
+
+**What You Get:**
+- ✅ Same Datadog dashboards (10% sample is statistically valid)
+- ✅ 100% of data stored locally (compressed, fast queries)
+- ✅ AI-powered natural language queries on ALL data
+- ✅ 90% cost reduction on your monitoring bill
+
+**How Tiered Storage Works:**
+- 🔥 Hot (7 days): Full-resolution, instant queries
+- 🌡️ Warm (30 days): 5-min aggregation, fast queries
+- ❄️ Cold (365 days): 1-hr aggregation, cheap S3/GCS/Azure storage
 
 ## What Gets Deployed
 

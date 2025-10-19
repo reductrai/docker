@@ -6,12 +6,47 @@
 
 ## Table of Contents
 
-1. [Storage Architecture](#storage-architecture)
-2. [Tiered Storage Strategy](#tiered-storage-strategy)
-3. [Supported Storage Backends](#supported-storage-backends)
-4. [Configuration Examples](#configuration-examples)
-5. [Cost Optimization](#cost-optimization)
-6. [Best Practices](#best-practices)
+1. [Understanding ReductrAI's Role](#understanding-reductrai-role)
+2. [Storage Architecture](#storage-architecture)
+3. [Tiered Storage Strategy](#tiered-storage-strategy)
+4. [Supported Storage Backends](#supported-storage-backends)
+5. [Configuration Examples](#configuration-examples)
+6. [Cost Optimization](#cost-optimization)
+7. [Best Practices](#best-practices)
+
+---
+
+## Understanding ReductrAI's Role
+
+**IMPORTANT**: ReductrAI does NOT replace your monitoring service. Instead, it sits between your applications and your existing monitoring service (Datadog, New Relic, etc.) to reduce costs while improving visibility.
+
+### The ReductrAI Value Proposition
+
+**Problem**: Monitoring services charge based on data volume. More metrics = higher bills.
+
+**Traditional Solution (Sampling)**: Send only 10% of data → Save 90% on costs, but LOSE 90% of visibility.
+
+**ReductrAI Solution (Dual-Path Architecture)**:
+1. Store 100% of data locally (compressed, AI-queryable)
+2. Forward only 10% to monitoring service (cost savings)
+3. Result: FULL visibility + 90% cost reduction
+
+### Required Components for Production
+
+To use ReductrAI in production, you need BOTH:
+
+1. **Backend Monitoring Service** (REQUIRED) - Datadog, New Relic, Prometheus, etc.
+   - You must configure credentials in `.env` (DATADOG_API_KEY, etc.)
+   - ReductrAI forwards 10% sample here
+   - Your existing dashboards and alerts continue to work
+   - Cost: 90% LESS than current bills
+
+2. **Local Storage** (REQUIRED) - Your infrastructure for 100% data retention
+   - Configure tiered storage (hot/warm/cold) based on your needs
+   - Options: Local disk, AWS S3, GCS, Azure, Redis, PostgreSQL, MinIO
+   - Cost: ~$24/month for 1TB/year (vs $3,000/month for monitoring service)
+
+**Together**: You get better observability at 10% of the cost.
 
 ---
 
@@ -24,25 +59,38 @@ Your Application
       ↓
 ReductrAI Proxy (runs on YOUR infrastructure)
       ↓
-┌─────┴────────┐
-│              │
-LOCAL STORAGE  FORWARD 10%
-(Your disk/S3) (To Datadog/NewRelic/etc)
-100% of data   Sampled data
-Compressed     Original format
+      ├─────────────────────────┐
+      │                         │
+LOCAL STORAGE              FORWARD 10%
+(Your disk/S3)            (To Datadog/NewRelic/etc - REQUIRED)
+100% of data              Sampled data
+Compressed 89%            Original format
+AI-queryable              Dashboard/Alerts
+$24/month                 $1,000/month (down from $10,000)
 ```
 
 ### Key Principles
 
-1. **You own the infrastructure** - ReductrAI runs on your servers/k8s/Docker
-2. **You provide the storage** - Local disk, EBS volumes, S3 buckets, etc.
-3. **We manage efficiency** - Compression, tiering, retention, AI queries
+1. **ReductrAI is middleware** - Sits between your apps and monitoring service
+2. **You need BOTH components**:
+   - Backend service (Datadog/NewRelic) - receives 10% sample for dashboards
+   - Local storage (your infrastructure) - stores 100% for AI queries
+3. **You own the infrastructure** - ReductrAI runs on your servers/k8s/Docker
+4. **You provide the storage** - Local disk, EBS volumes, S3 buckets, etc.
+5. **We manage efficiency** - Compression, tiering, retention, AI queries
 
-This is like running PostgreSQL - we're the database software, you provide the hardware and disks.
+**Analogy**: This is like running PostgreSQL - we're the database software, you provide the hardware. But unlike a database, you ALSO need a backend monitoring service configured (this is what makes the cost savings possible).
 
 ---
 
 ## Tiered Storage Strategy
+
+**What is Tiered Storage For?**
+
+Tiered storage manages the **100% local copy** of your data. It does NOT replace the backend monitoring service - both work together:
+
+- **Backend Service** (Datadog/NewRelic) → Receives 10% sample for dashboards/alerts
+- **Tiered Local Storage** → Stores 100% for AI queries and compliance
 
 ReductrAI implements a three-tier storage system similar to major observability platforms:
 
@@ -192,6 +240,10 @@ STORAGE_COLD_TYPE=local
 
 ```bash
 # .env
+# Backend monitoring service (REQUIRED - this is where cost savings come from)
+DATADOG_API_KEY=your_datadog_api_key_here
+DATADOG_ENDPOINT=https://api.datadoghq.com
+
 # Hot tier: Local SSD
 STORAGE_HOT_ENABLED=true
 STORAGE_HOT_RETENTION_DAYS=7
@@ -213,10 +265,19 @@ S3_ACCESS_KEY=AKIA...
 S3_SECRET_KEY=...
 ```
 
-**Storage cost:**
-- Local (hot+warm): ~$20/month
-- S3 (cold): ~$4/month (170GB × $0.023)
-- **Total:** ~$24/month
+**Complete cost breakdown (for 1M metrics/day):**
+
+| Component | Monthly Cost | What You Get |
+|-----------|-------------|--------------|
+| **ReductrAI Storage** | | |
+| - Local (hot+warm) | ~$20 | 100% data, instant queries |
+| - S3 (cold) | ~$4 | Long-term compliance |
+| **Datadog (10% sample)** | ~$1,000 | Dashboards, alerts (same as before) |
+| **TOTAL** | **~$1,024/month** | Full observability |
+
+**Compare to Datadog alone (100% data):** ~$10,000/month
+
+**Your savings:** ~$9,000/month (90% reduction)
 
 ---
 
@@ -364,9 +425,22 @@ STORAGE_COLD_ENABLED=false
 
 ## Cost Optimization
 
-### Storage Cost Comparison
+### Complete Cost Comparison (ReductrAI vs Traditional)
 
-For **1TB of observability data per year**:
+For **1TB of observability data per year**, here's the complete picture:
+
+#### Traditional Approach (Datadog only, 100% data)
+- Datadog: ~$10,000/month
+- **Total: $10,000/month**
+
+#### ReductrAI Approach (Dual-path: 100% local + 10% forwarded)
+- ReductrAI storage (100% local): ~$24/month
+- Datadog (10% sample): ~$1,000/month
+- **Total: $1,024/month** (90% savings!)
+
+### ReductrAI Storage Cost Breakdown by Backend
+
+**Local Storage Tiers** (required for all deployments):
 
 | Tier | Local SSD | AWS S3 | S3 Glacier | Redis | PostgreSQL |
 |------|-----------|--------|------------|-------|------------|
@@ -374,21 +448,32 @@ For **1TB of observability data per year**:
 | Warm (30d) | ~$50/mo | $23/mo | N/A | ~$100/mo | ~$50/mo |
 | Cold (365d) | ~$30/mo | $23/mo | $4/mo | ~$100/mo | ~$50/mo |
 
+**Backend Monitoring Service** (REQUIRED):
+- Datadog/NewRelic (10% sample): ~$1,000/month (down from $10,000)
+
 ### Typical Enterprise Setup
 
 ```
 🔥 HOT (7 days)     → Local NVMe SSD       (fast, expensive)
 🌡️ WARM (30 days)   → Local SATA SSD      (medium speed/cost)
 ❄️  COLD (365 days) → AWS S3 Glacier Deep (slow, very cheap)
+📊 BACKEND         → Datadog (10% sample, dashboards)
 ```
 
-**Monthly cost for 10TB/year:**
-- Hot: 70GB × $1.50/GB = $105
-- Warm: 210GB × $0.50/GB = $105
-- Cold: 3.3TB × $0.004/GB = $13
-- **Total:** ~$223/month
+**Complete monthly costs for 10TB/year:**
 
-**Compare to Datadog:** ~$3,000+/month for same volume
+| Component | Cost | Details |
+|-----------|------|---------|
+| **ReductrAI Local Storage** | | |
+| - Hot (7 days) | $105 | 70GB × $1.50/GB |
+| - Warm (30 days) | $105 | 210GB × $0.50/GB |
+| - Cold (365 days) | $13 | 3.3TB × $0.004/GB |
+| **Backend (Datadog 10%)** | $3,000 | Down from $30,000 |
+| **TOTAL** | **$3,223/month** | Full observability |
+
+**Compare to Datadog alone:** ~$30,000/month for same 10TB
+
+**Your savings:** ~$27,000/month (90% reduction)
 
 ### Cost Reduction Strategies
 
@@ -564,12 +649,24 @@ STORAGE_COLD_AGGREGATION=30m  # Down from 1h
 
 **Key Takeaways:**
 
-✅ ReductrAI is software - you provide the infrastructure
-✅ Supports all major cloud storage providers
-✅ Three-tier storage: hot (fast), warm (medium), cold (cheap)
-✅ 93% storage savings compared to uncompressed
-✅ Flexible: mix local + cloud storage tiers
-✅ Cost-effective: $24/month vs $3,000/month for same data
+✅ **ReductrAI is middleware** - Sits between your apps and monitoring service (NOT a replacement)
+✅ **Backend credentials REQUIRED** - Datadog/NewRelic API keys needed to demonstrate cost savings
+✅ **Dual-path architecture** - 100% local storage + 10% forwarded to backend
+✅ **Complete cost picture** - ReductrAI storage ($24/mo) + Backend service (90% less)
+✅ **Three-tier storage** - Hot (fast), warm (medium), cold (cheap) for local 100% copy
+✅ **Multi-cloud support** - AWS S3, GCS, Azure, Redis, PostgreSQL, MinIO, etc.
+✅ **93% storage savings** - Compression reduces local storage requirements dramatically
+✅ **90% cost reduction** - Pay 10% of monitoring service costs while keeping full visibility
+
+**What You Need for Production:**
+1. Backend monitoring service credentials (DATADOG_API_KEY, etc.)
+2. Local storage backend (local disk, S3, GCS, Azure, etc.)
+3. ReductrAI license key
+
+**Example Total Cost (1M metrics/day):**
+- ReductrAI local storage: $24/month (100% data, AI-queryable)
+- Datadog (10% sample): $1,000/month (dashboards, alerts)
+- **Total: $1,024/month** vs $10,000/month (90% savings)
 
 **For more information:**
 - [Main README](./README.md)
