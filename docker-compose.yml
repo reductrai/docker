@@ -3,9 +3,7 @@ version: '3.8'
 services:
   # ReductrAI Proxy - Main service
   proxy:
-    build:
-      context: ../reductrai-proxy
-      dockerfile: Dockerfile.prod
+    image: reductrai/proxy:${REDUCTRAI_VERSION:-latest}
     container_name: reductrai-proxy
     ports:
       - "8080:8080"
@@ -33,7 +31,7 @@ services:
       # Forward destination
       - FORWARD_TO=${FORWARD_TO:-https://api.datadoghq.com}
 
-      # Backend services (optional)
+      # Backend services (REQUIRED for production - see .env.example)
       - DATADOG_API_KEY=${DATADOG_API_KEY:-}
       - DATADOG_ENDPOINT=${DATADOG_ENDPOINT:-https://api.datadoghq.com}
       - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY:-}
@@ -109,9 +107,7 @@ services:
 
   # Dashboard UI
   dashboard:
-    build:
-      context: ../reductrai-dashboard
-      dockerfile: Dockerfile
+    image: reductrai/dashboard:${REDUCTRAI_VERSION:-latest}
     container_name: reductrai-dashboard
     ports:
       - "5173:80"
@@ -142,9 +138,7 @@ services:
 
   # AI Query Service (Optional - for local LLM)
   ai-query:
-    build:
-      context: ../reductrai-ai-query
-      dockerfile: Dockerfile
+    image: reductrai/ai-query:${REDUCTRAI_VERSION:-latest}
     container_name: reductrai-ai-query
     ports:
       - "8081:8081"

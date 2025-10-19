@@ -4,7 +4,12 @@ Official Docker images and deployment configurations for ReductrAI - AI SRE Prox
 
 ## Quick Start
 
+**⚠️ IMPORTANT:** Docker images are not yet published to Docker Hub. You must build them locally first. See [BUILD.md](./BUILD.md) for instructions.
+
 ```bash
+# 0. Build images (REQUIRED - see BUILD.md for details)
+./build-images.sh
+
 # 1. Configure environment
 cp .env.example .env
 
@@ -14,7 +19,7 @@ cp .env.example .env
 nano .env
 
 # 3. Start all services
-docker-compose up -d --build
+docker-compose up -d
 
 # 4. Wait for services to be healthy (30-60 seconds)
 docker ps
