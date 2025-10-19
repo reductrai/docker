@@ -168,9 +168,9 @@ See [docker-compose.yml](./docker-compose.yml) for full configuration options.
 
 ## Documentation
 
-- [Installation Guide](./docs/INSTALLATION.md)
-- [Configuration Reference](./docs/CONFIGURATION.md)
-- [Troubleshooting](./docs/TROUBLESHOOTING.md)
+- **[Storage Configuration Guide](./STORAGE.md)** - Complete guide to storage backends, tiered storage, and cost optimization
+- [Configuration Reference](./.env.example) - All available environment variables
+- [Docker Compose Reference](./docker-compose.yml) - Service orchestration
 
 ## Support
 
