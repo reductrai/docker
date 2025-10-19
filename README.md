@@ -36,14 +36,24 @@ docker-compose up -d
 curl http://localhost:8080/health
 ```
 
-### Option 3: Git Clone (For Development)
+### Option 3: Single Container (Proxy Only)
 
 ```bash
-git clone https://github.com/reductrai/docker.git
-cd docker
-cp .env.example .env
-nano .env
-docker-compose up -d
+# Create configuration
+cat > .env << 'EOF'
+REDUCTRAI_LICENSE_KEY=RF-DEMO-2025
+DATADOG_API_KEY=your_datadog_key_here
+EOF
+
+# Run proxy (image auto-pulls from Docker Hub)
+docker run -d \
+  --name reductrai-proxy \
+  -p 8080:8080 \
+  --env-file .env \
+  reductrai/proxy:latest
+
+# Verify
+curl http://localhost:8080/health
 ```
 
 ## Quick Start
