@@ -2,28 +2,66 @@
 
 Official Docker images and deployment configurations for ReductrAI - AI SRE Proxy that provides full observability at 10% of the cost.
 
-## Quick Start
+## Installation
+
+### Option 1: One-Line Installer (Recommended)
 
 ```bash
-# 1. Configure environment
+curl -fsSL https://raw.githubusercontent.com/reductrai/docker/main/install.sh | bash
+```
+
+The installer will:
+- Download docker-compose.yml and .env.example
+- Prompt for your API keys (Datadog, New Relic, etc.)
+- Create .env configuration
+- Pull Docker images from Docker Hub
+- Start all services
+- Verify health
+
+### Option 2: Manual Setup
+
+```bash
+# Download configuration files
+curl -O https://raw.githubusercontent.com/reductrai/docker/main/docker-compose.yml
+curl -O https://raw.githubusercontent.com/reductrai/docker/main/.env.example
+
+# Configure environment
 cp .env.example .env
+nano .env  # Add your API keys
 
-# 2. Edit .env with YOUR credentials:
-#    - REDUCTRAI_LICENSE_KEY (use RF-DEMO-2025 for trial)
-#    - DATADOG_API_KEY (or your monitoring service API key)
-nano .env
-
-# 3. Start all services
+# Start services (images auto-pull from Docker Hub)
 docker-compose up -d
 
-# 4. Wait for services to be healthy (30-60 seconds)
+# Verify
+curl http://localhost:8080/health
+```
+
+### Option 3: Git Clone (For Development)
+
+```bash
+git clone https://github.com/reductrai/docker.git
+cd docker
+cp .env.example .env
+nano .env
+docker-compose up -d
+```
+
+## Quick Start
+
+After installation:
+
+```bash
+# 1. Verify services are running
 docker ps
 
-# 5. Point your apps to ReductrAI instead of Datadog
+# 2. Check health
+curl http://localhost:8080/health
+
+# 3. Point your apps to ReductrAI instead of Datadog
 #    BEFORE: DD_AGENT_HOST=api.datadoghq.com
 #    AFTER:  DD_AGENT_HOST=localhost:8080
 
-# 6. Access services
+# 4. Access services
 # Dashboard: http://localhost:5173
 # Proxy API: http://localhost:8080
 # AI Query:  http://localhost:8081
