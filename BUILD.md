@@ -23,7 +23,7 @@ docker-compose pull
 docker-compose up -d
 ```
 
-**Note:** Images are not yet published to Docker Hub. This will work once images are published.
+**Note:** Images are published on Docker Hub and will be automatically pulled. Build locally only if you need to modify the source code or test unreleased versions.
 
 ## Option 2: Build Images Locally (For Development)
 
