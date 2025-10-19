@@ -9,6 +9,14 @@ services:
     container_name: reductrai-proxy
     ports:
       - "8080:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
     environment:
       - REDUCTRAI_LICENSE_KEY=${REDUCTRAI_LICENSE_KEY}
       - NODE_ENV=production
@@ -22,7 +30,7 @@ services:
       - DATADOG_ENDPOINT=${DATADOG_ENDPOINT:-https://api.datadoghq.com}
       - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY:-}
       - PROMETHEUS_ENDPOINT=${PROMETHEUS_ENDPOINT:-}
-      # Forward destination - where to send metrics
+      # Forward destination
       - FORWARD_TO=https://api.datadoghq.com
       # AI Query service endpoint
       - LOCAL_LLM_ENDPOINT=http://ai-query:8081
