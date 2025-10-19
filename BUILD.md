@@ -79,13 +79,35 @@ reductrai/ai-query    latest   ...   ... ago   ...MB
 
 ### Prerequisites
 
-1. Docker Hub account
+1. Docker Hub account with access to the `reductrai` organization
 2. Login to Docker Hub:
    ```bash
    docker login
    ```
 
-### Build and Push
+### Automated Build and Push (Recommended)
+
+Use the provided script to build and publish all images in one command:
+
+```bash
+# Publish latest version
+./publish-images.sh
+
+# Or publish specific version
+./publish-images.sh 1.0.0
+```
+
+The script will:
+- Verify Docker Hub login
+- Check all source repositories exist
+- Build all three images (proxy, dashboard, ai-query)
+- Push images to Docker Hub
+- Tag both with version and 'latest'
+- Display confirmation and usage instructions
+
+### Manual Build and Push
+
+If you prefer manual control:
 
 ```bash
 # Set version

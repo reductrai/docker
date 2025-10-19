@@ -206,9 +206,40 @@ open http://localhost:5173
 
 See [docker-compose.yml](./docker-compose.yml) for full configuration options.
 
+## For Maintainers: Publishing Images
+
+Two scripts are available for building and publishing Docker images:
+
+### Build Images Locally
+```bash
+./build-images.sh          # Build all images (proxy, dashboard, ai-query)
+./build-images.sh v1.0.0   # Build with specific version tag
+```
+
+This builds images for local testing without publishing to Docker Hub.
+
+### Build and Publish to Docker Hub
+```bash
+# Login first
+docker login
+
+# Build and publish
+./publish-images.sh          # Publish as 'latest'
+./publish-images.sh v1.0.0   # Publish as specific version + latest
+```
+
+This script:
+- Verifies Docker Hub authentication
+- Builds all three images
+- Pushes to `reductrai/*` organization on Docker Hub
+- Tags both with version and 'latest'
+
+See [BUILD.md](./BUILD.md) for detailed instructions.
+
 ## Documentation
 
 - **[Storage Configuration Guide](./STORAGE.md)** - Complete guide to storage backends, tiered storage, and cost optimization
+- **[Build & Publish Guide](./BUILD.md)** - How to build and publish Docker images
 - [Configuration Reference](./.env.example) - All available environment variables
 - [Docker Compose Reference](./docker-compose.yml) - Service orchestration
 

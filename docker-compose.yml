@@ -121,7 +121,7 @@ services:
 
   # Ollama LLM Service
   ollama:
-    image: ollama/ollama:latest
+    image: reductrai/ollama:${REDUCTRAI_VERSION:-latest}
     container_name: reductrai-ollama
     ports:
       - "11434:11434"

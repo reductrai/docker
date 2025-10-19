@@ -17,6 +17,7 @@ fi
 PROXY_DIR="../reductrai-proxy"
 DASHBOARD_DIR="../reductrai-dashboard"
 AI_QUERY_DIR="../reductrai-ai-query"
+OLLAMA_DIR="../reductrai-ollama"
 
 if [ ! -d "$PROXY_DIR" ]; then
     echo "❌ Error: $PROXY_DIR not found"
@@ -24,6 +25,7 @@ if [ ! -d "$PROXY_DIR" ]; then
     echo "   - reductrai-proxy"
     echo "   - reductrai-dashboard"
     echo "   - reductrai-ai-query"
+    echo "   - reductrai-ollama"
     echo "   - reductrai-docker (this repo)"
     exit 1
 fi
@@ -35,6 +37,11 @@ fi
 
 if [ ! -d "$AI_QUERY_DIR" ]; then
     echo "❌ Error: $AI_QUERY_DIR not found"
+    exit 1
+fi
+
+if [ ! -d "$OLLAMA_DIR" ]; then
+    echo "❌ Error: $OLLAMA_DIR not found"
     exit 1
 fi
 
@@ -78,9 +85,20 @@ docker build \
 echo "✅ reductrai/ai-query:$VERSION built successfully"
 echo ""
 
+# Build Ollama image
+echo "🔨 Building reductrai/ollama:$VERSION..."
+docker build \
+    -t "reductrai/ollama:$VERSION" \
+    -t "reductrai/ollama:latest" \
+    -f "$OLLAMA_DIR/Dockerfile" \
+    "$OLLAMA_DIR"
+
+echo "✅ reductrai/ollama:$VERSION built successfully"
+echo ""
+
 # Show built images
 echo "📋 Built images:"
-docker images | grep -E "^reductrai/(proxy|dashboard|ai-query)" | head -6
+docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|ollama)" | head -8
 
 echo ""
 echo "✨ All images built successfully!"
