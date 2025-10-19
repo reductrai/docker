@@ -234,6 +234,8 @@ See [BUILD.md](./BUILD.md) for detailed instructions.
 ## Documentation
 
 - **[Storage Configuration Guide](./STORAGE.md)** - Complete guide to storage backends, tiered storage, and cost optimization
+- **[Security Hardening Guide](./SECURITY.md)** - Production security best practices
+- **[High Availability Guide](./HIGH-AVAILABILITY.md)** - HA deployment and scaling strategies
 - **[Build & Publish Guide](./BUILD.md)** - How to build and publish Docker images
 - [Configuration Reference](./.env.example) - All available environment variables
 - [Docker Compose Reference](./docker-compose.yml) - Service orchestration
