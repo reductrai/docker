@@ -57,8 +57,8 @@ echo "🔨 Building reductrai/proxy:$VERSION..."
 docker build \
     -t "reductrai/proxy:$VERSION" \
     -t "reductrai/proxy:latest" \
-    -f "$PROXY_DIR/Dockerfile.prod" \
-    "$PROXY_DIR"
+    -f "dockerfiles/Dockerfile.proxy" \
+    .
 
 echo "✅ reductrai/proxy:$VERSION built successfully"
 echo ""
@@ -68,7 +68,7 @@ echo "🔨 Building reductrai/dashboard:$VERSION..."
 docker build \
     -t "reductrai/dashboard:$VERSION" \
     -t "reductrai/dashboard:latest" \
-    -f "$DASHBOARD_DIR/Dockerfile" \
+    -f "dockerfiles/Dockerfile.dashboard" \
     "$DASHBOARD_DIR"
 
 echo "✅ reductrai/dashboard:$VERSION built successfully"
@@ -79,26 +79,26 @@ echo "🔨 Building reductrai/ai-query:$VERSION..."
 docker build \
     -t "reductrai/ai-query:$VERSION" \
     -t "reductrai/ai-query:latest" \
-    -f "$AI_QUERY_DIR/Dockerfile" \
+    -f "dockerfiles/Dockerfile.ai-query" \
     "$AI_QUERY_DIR"
 
 echo "✅ reductrai/ai-query:$VERSION built successfully"
 echo ""
 
-# Build Ollama image
-echo "🔨 Building reductrai/ollama:$VERSION..."
+# Build all-in-one image (Proxy + Dashboard + AI Query + Ollama)
+echo "🔨 Building reductrai/reductrai:$VERSION (all-in-one)..."
 docker build \
-    -t "reductrai/ollama:$VERSION" \
-    -t "reductrai/ollama:latest" \
-    -f "$OLLAMA_DIR/Dockerfile" \
-    "$OLLAMA_DIR"
+    -t "reductrai/reductrai:$VERSION" \
+    -t "reductrai/reductrai:latest" \
+    -f "dockerfiles/Dockerfile.all-in-one" \
+    .
 
-echo "✅ reductrai/ollama:$VERSION built successfully"
+echo "✅ reductrai/reductrai:$VERSION built successfully"
 echo ""
 
 # Show built images
 echo "📋 Built images:"
-docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|ollama)" | head -8
+docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|reductrai)" | head -10
 
 echo ""
 echo "✨ All images built successfully!"

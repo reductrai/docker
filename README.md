@@ -2,7 +2,9 @@
 
 Official Docker images and deployment configurations for ReductrAI - AI SRE Proxy that provides full observability at 10% of the cost.
 
-## Installation
+**For comprehensive deployment documentation covering all options (All-in-One, Docker Compose, Standalone, Kubernetes), see [DEPLOYMENT-GUIDE.md](./DEPLOYMENT-GUIDE.md)**
+
+## Quick Start
 
 ### Option 1: One-Line Installer (Recommended)
 
@@ -36,7 +38,46 @@ docker-compose up -d
 curl http://localhost:8080/health
 ```
 
-### Option 3: Single Container (Proxy Only)
+### Option 3: All-in-One Container (Recommended for Getting Started)
+
+Single container with ALL services (Proxy + Dashboard + AI Query + Ollama):
+
+```bash
+# Basic setup - just proxy and dashboard
+docker run -d \
+  --name reductrai \
+  -p 8080:8080 \
+  -p 5173:5173 \
+  -e REDUCTRAI_LICENSE_KEY=RF-DEMO-2025 \
+  -e DATADOG_API_KEY=your_datadog_key_here \
+  -v reductrai-data:/app/data \
+  reductrai/reductrai:latest
+
+# With AI features and tiered storage
+docker run -d \
+  --name reductrai \
+  -p 8080:8080 \
+  -p 5173:5173 \
+  -p 8081:8081 \
+  -p 11434:11434 \
+  -e REDUCTRAI_LICENSE_KEY=RF-DEMO-2025 \
+  -e DATADOG_API_KEY=your_datadog_key_here \
+  -e STORAGE_COLD_TYPE=s3 \
+  -e S3_BUCKET=my-reductrai-bucket \
+  -e S3_REGION=us-east-1 \
+  -e S3_ACCESS_KEY=your_key \
+  -e S3_SECRET_KEY=your_secret \
+  -v reductrai-data:/app/data \
+  reductrai/reductrai:latest
+
+# Verify all services
+curl http://localhost:8080/health  # Proxy
+curl http://localhost:5173/        # Dashboard
+curl http://localhost:8081/health  # AI Query
+curl http://localhost:11434/api/tags # Ollama
+```
+
+### Option 4: Single Service (Proxy Only)
 
 ```bash
 # Create configuration
@@ -45,7 +86,7 @@ REDUCTRAI_LICENSE_KEY=RF-DEMO-2025
 DATADOG_API_KEY=your_datadog_key_here
 EOF
 
-# Run proxy (image auto-pulls from Docker Hub)
+# Run proxy only (image auto-pulls from Docker Hub)
 docker run -d \
   --name reductrai-proxy \
   -p 8080:8080 \
@@ -249,17 +290,53 @@ open http://localhost:5173
 
 See [docker-compose.yml](./docker-compose.yml) for full configuration options.
 
+## Repository Structure
+
+This repository is the **single source of truth** for all ReductrAI Docker deployments:
+
+```
+reductrai-docker/
+├── README.md                    # You are here
+├── docker-compose.yml           # Multi-service orchestration
+├── .env.example                 # Environment variable template
+├── install.sh                   # One-line installer
+│
+├── dockerfiles/                 # All Dockerfiles
+│   ├── Dockerfile.proxy         # Proxy service
+│   ├── Dockerfile.dashboard     # Dashboard UI
+│   ├── Dockerfile.ai-query      # AI Query service
+│   └── Dockerfile.all-in-one    # All services in one container
+│
+├── build-images.sh              # Build all images locally
+├── publish-images.sh            # Publish to Docker Hub
+│
+├── docs/
+│   ├── STORAGE.md               # Tiered storage configuration
+│   ├── SECURITY.md              # Security hardening guide
+│   ├── HIGH-AVAILABILITY.md     # HA deployment strategies
+│   └── BUILD.md                 # Build & publish instructions
+│
+└── examples/                    # Example configurations
+    └── (coming soon)
+```
+
 ## For Maintainers: Publishing Images
 
 Two scripts are available for building and publishing Docker images:
 
 ### Build Images Locally
 ```bash
-./build-images.sh          # Build all images (proxy, dashboard, ai-query)
+./build-images.sh          # Build all images (proxy, dashboard, ai-query, all-in-one)
 ./build-images.sh v1.0.0   # Build with specific version tag
 ```
 
 This builds images for local testing without publishing to Docker Hub.
+
+Builds:
+- `reductrai/proxy:latest` - Proxy service only
+- `reductrai/dashboard:latest` - Dashboard UI only
+- `reductrai/ai-query:latest` - AI Query service only
+- `reductrai/reductrai:latest` - All-in-one image (recommended for getting started)
 
 ### Build and Publish to Docker Hub
 ```bash
@@ -273,7 +350,7 @@ docker login
 
 This script:
 - Verifies Docker Hub authentication
-- Builds all three images
+- Builds all four images from `dockerfiles/` directory
 - Pushes to `reductrai/*` organization on Docker Hub
 - Tags both with version and 'latest'
 

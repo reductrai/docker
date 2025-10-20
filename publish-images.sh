@@ -88,8 +88,8 @@ echo "🔨 Building reductrai/proxy:$VERSION..."
 docker build \
     -t "reductrai/proxy:$VERSION" \
     -t "reductrai/proxy:latest" \
-    -f "$PROXY_DIR/Dockerfile.prod" \
-    "$PROXY_DIR"
+    -f "dockerfiles/Dockerfile.proxy" \
+    .
 
 echo "✅ Build complete"
 echo ""
@@ -112,7 +112,7 @@ echo "🔨 Building reductrai/dashboard:$VERSION..."
 docker build \
     -t "reductrai/dashboard:$VERSION" \
     -t "reductrai/dashboard:latest" \
-    -f "$DASHBOARD_DIR/Dockerfile" \
+    -f "dockerfiles/Dockerfile.dashboard" \
     "$DASHBOARD_DIR"
 
 echo "✅ Build complete"
@@ -136,7 +136,7 @@ echo "🔨 Building reductrai/ai-query:$VERSION..."
 docker build \
     -t "reductrai/ai-query:$VERSION" \
     -t "reductrai/ai-query:latest" \
-    -f "$AI_QUERY_DIR/Dockerfile" \
+    -f "dockerfiles/Dockerfile.ai-query" \
     "$AI_QUERY_DIR"
 
 echo "✅ Build complete"
@@ -153,27 +153,27 @@ echo "✅ AI Query image published successfully"
 echo ""
 
 echo "================================================"
-echo "4/4 Building and Publishing Ollama Image"
+echo "4/4 Building and Publishing All-in-One Image"
 echo "================================================"
 
-echo "🔨 Building reductrai/ollama:$VERSION..."
+echo "🔨 Building reductrai/reductrai:$VERSION (all-in-one)..."
 docker build \
-    -t "reductrai/ollama:$VERSION" \
-    -t "reductrai/ollama:latest" \
-    -f "$OLLAMA_DIR/Dockerfile" \
-    "$OLLAMA_DIR"
+    -t "reductrai/reductrai:$VERSION" \
+    -t "reductrai/reductrai:latest" \
+    -f "dockerfiles/Dockerfile.all-in-one" \
+    .
 
 echo "✅ Build complete"
 echo ""
-echo "📤 Pushing reductrai/ollama:$VERSION to Docker Hub..."
-docker push "reductrai/ollama:$VERSION"
+echo "📤 Pushing reductrai/reductrai:$VERSION to Docker Hub..."
+docker push "reductrai/reductrai:$VERSION"
 
 if [ "$VERSION" != "latest" ]; then
-    echo "📤 Pushing reductrai/ollama:latest to Docker Hub..."
-    docker push "reductrai/ollama:latest"
+    echo "📤 Pushing reductrai/reductrai:latest to Docker Hub..."
+    docker push "reductrai/reductrai:latest"
 fi
 
-echo "✅ Ollama image published successfully"
+echo "✅ All-in-one image published successfully"
 echo ""
 
 # Show published images
@@ -185,18 +185,18 @@ echo "📋 Published images on Docker Hub:"
 echo "   - reductrai/proxy:$VERSION"
 echo "   - reductrai/dashboard:$VERSION"
 echo "   - reductrai/ai-query:$VERSION"
-echo "   - reductrai/ollama:$VERSION"
+echo "   - reductrai/reductrai:$VERSION (all-in-one)"
 
 if [ "$VERSION" != "latest" ]; then
     echo "   - reductrai/proxy:latest"
     echo "   - reductrai/dashboard:latest"
     echo "   - reductrai/ai-query:latest"
-    echo "   - reductrai/ollama:latest"
+    echo "   - reductrai/reductrai:latest (all-in-one)"
 fi
 
 echo ""
 echo "📋 Local images:"
-docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|ollama)" | head -8
+docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|reductrai)" | head -10
 
 echo ""
 echo "================================================"

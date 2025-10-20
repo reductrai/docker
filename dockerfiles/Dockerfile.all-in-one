@@ -1,0 +1,195 @@
+# ReductrAI All-in-One Docker Image
+# This image contains proxy, dashboard, ai-query, and ollama in a single container
+#
+# ENVIRONMENT VARIABLES:
+# All environment variables are passed through to the services.
+# See .env.example for full list of available configuration options.
+#
+# REQUIRED:
+#   REDUCTRAI_LICENSE_KEY - Your license key (use RF-DEMO-2025 for trial)
+#
+# RECOMMENDED:
+#   DATADOG_API_KEY - Your Datadog API key (or NEW_RELIC_API_KEY, etc.)
+#   REDUCTRAI_COMPRESSION_LEVEL - Compression level: light|medium|heavy (default: heavy)
+#   PROXY_MODE - Operation mode: sample|store-only|forward-only (default: sample)
+#   SAMPLE_RATE - Sampling rate 0.0-1.0 (default: 0.1 = 10%)
+#
+# TIERED STORAGE:
+#   STORAGE_HOT_ENABLED - Enable hot storage (default: true)
+#   STORAGE_HOT_RETENTION_DAYS - Hot storage retention days (default: 7)
+#   STORAGE_WARM_ENABLED - Enable warm storage (default: true)
+#   STORAGE_WARM_RETENTION_DAYS - Warm storage retention days (default: 30)
+#   STORAGE_COLD_ENABLED - Enable cold storage (default: true)
+#   STORAGE_COLD_RETENTION_DAYS - Cold storage retention days (default: 365)
+#   STORAGE_COLD_TYPE - Cold storage backend: local|s3|gcs|azure|redis|postgres
+#
+# CLOUD STORAGE (S3/GCS/Azure):
+#   S3_BUCKET, S3_REGION, S3_ACCESS_KEY, S3_SECRET_KEY
+#   GCS_BUCKET, GCS_PROJECT_ID, GCS_CREDENTIALS_PATH
+#   AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_KEY, AZURE_CONTAINER
+#
+# PORTS:
+#   8080 - Proxy API
+#   5173 - Dashboard UI
+#   8081 - AI Query Service
+#   11434 - Ollama LLM
+#
+# VOLUMES:
+#   /app/data - Data storage (mount for persistence)
+#
+# EXAMPLE:
+#   docker run -d -p 8080:8080 -p 5173:5173 -p 8081:8081 -p 11434:11434 \
+#     -v reductrai-data:/app/data \
+#     -e REDUCTRAI_LICENSE_KEY=RF-DEMO-2025 \
+#     -e DATADOG_API_KEY=your_key \
+#     -e STORAGE_COLD_TYPE=s3 \
+#     -e S3_BUCKET=my-reductrai-bucket \
+#     reductrai/reductrai:latest
+
+FROM node:20-slim AS base
+
+# Install supervisord, nginx, curl, and python for supervisor
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    supervisor \
+    nginx \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Set working directory
+WORKDIR /app
+
+# ============================================================================
+# STAGE 1: Build Proxy
+# ============================================================================
+FROM base AS proxy-builder
+COPY --from=reductrai/proxy:latest /app /app/proxy
+
+# ============================================================================
+# STAGE 2: Build Dashboard
+# ============================================================================
+FROM base AS dashboard-builder
+COPY --from=reductrai/dashboard:latest /usr/share/nginx/html /app/dashboard
+
+# ============================================================================
+# STAGE 3: Build AI Query
+# ============================================================================
+FROM base AS ai-query-builder
+COPY --from=reductrai/ai-query:latest /app /app/ai-query
+
+# ============================================================================
+# STAGE 4: Build Ollama
+# ============================================================================
+FROM base AS ollama-builder
+COPY --from=ollama/ollama:latest /bin/ollama /bin/ollama
+
+# ============================================================================
+# FINAL STAGE: Combine everything
+# ============================================================================
+FROM base
+
+# Copy all services
+COPY --from=proxy-builder /app/proxy /app/proxy
+COPY --from=dashboard-builder /app/dashboard /usr/share/nginx/html
+COPY --from=ai-query-builder /app/ai-query /app/ai-query
+COPY --from=ollama-builder /bin/ollama /bin/ollama
+
+# Install dependencies for each service
+WORKDIR /app/proxy
+RUN npm ci --production 2>/dev/null || npm install --production
+
+WORKDIR /app/ai-query
+RUN npm ci --production 2>/dev/null || npm install --production
+
+# Configure nginx for dashboard
+RUN mkdir -p /run/nginx /var/log/nginx
+COPY <<EOF /etc/nginx/nginx.conf
+user www-data;
+worker_processes auto;
+error_log /var/log/nginx/error.log warn;
+pid /run/nginx/nginx.pid;
+
+events {
+    worker_connections 1024;
+}
+
+http {
+    include /etc/nginx/mime.types;
+    default_type application/octet-stream;
+    sendfile on;
+    keepalive_timeout 65;
+
+    server {
+        listen 5173;
+        root /usr/share/nginx/html;
+        index index.html;
+
+        location / {
+            try_files \$uri \$uri/ /index.html;
+        }
+    }
+}
+EOF
+
+# Create supervisord configuration
+COPY <<EOF /etc/supervisord.conf
+[supervisord]
+nodaemon=true
+user=root
+logfile=/var/log/supervisor/supervisord.log
+pidfile=/var/run/supervisord.pid
+
+[program:proxy]
+command=npx tsx apps/proxy/src/index.ts
+directory=/app/proxy
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+environment=NODE_ENV="production",REDUCTRAI_PORT="8080"
+
+[program:dashboard]
+command=nginx -g "daemon off;"
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+
+[program:ai-query]
+command=node dist/server.js
+directory=/app/ai-query
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+environment=AI_QUERY_PORT="8081"
+
+[program:ollama]
+command=/bin/ollama serve
+autostart=true
+autorestart=true
+stdout_logfile=/dev/stdout
+stdout_logfile_maxbytes=0
+stderr_logfile=/dev/stderr
+stderr_logfile_maxbytes=0
+environment=OLLAMA_HOST="0.0.0.0:11434",OLLAMA_MODELS="/app/data/ollama/models"
+EOF
+
+# Create necessary directories
+RUN mkdir -p /var/log/supervisor /app/data/ollama/models
+
+# Expose all ports
+EXPOSE 8080 5173 8081 11434
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+  CMD curl -f http://localhost:8080/health || exit 1
+
+# Start supervisord
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
