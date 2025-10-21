@@ -1,0 +1,28 @@
+# Development override for docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
+
+services:
+  proxy:
+    volumes:
+      # Mount local source code for development (exclude node_modules)
+      - ../reductrai-proxy/apps:/app/apps
+      - ../reductrai-proxy/packages:/app/packages
+      - ../reductrai-proxy/package.json:/app/package.json
+      - ../reductrai-proxy/tsconfig.json:/app/tsconfig.json
+      - reductrai-data:/app/data
+    # Override command to use tsx for hot reload
+    command: sh -c "npm install && npx tsx watch apps/proxy/src/index.ts"
+
+  ai-query:
+    volumes:
+      # Mount local AI query source
+      - ../reductrai-ai-query/src:/app/src
+      - ../reductrai-ai-query/dist:/app/dist
+      - ../reductrai-ai-query/package.json:/app/package.json
+      - ../reductrai-ai-query/tsconfig.json:/app/tsconfig.json
+      - reductrai-data:/app/data
+    # Use the built dist files
+    command: node dist/server.js
+
+volumes:
+  reductrai-data:

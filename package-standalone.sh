@@ -305,37 +305,22 @@ AI_MODEL=mistral
 AI_QUERY_PORT=8081
 
 # Storage Configuration
-STORAGE_BACKEND=local  # local|s3|gcs|azure|redis|postgresql
+STORAGE_BACKEND=local  # local|s3|redis
 STORAGE_PATH=/app/data/compression-logs
 
 # S3 Configuration (if STORAGE_BACKEND=s3)
+# Works with AWS S3, MinIO, DigitalOcean Spaces, and any S3-compatible storage
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 S3_BUCKET=
-
-# GCS Configuration (if STORAGE_BACKEND=gcs)
-GCP_PROJECT_ID=
-GCS_BUCKET=
-GCS_KEYFILE=/path/to/keyfile.json
-
-# Azure Configuration (if STORAGE_BACKEND=azure)
-AZURE_STORAGE_ACCOUNT=
-AZURE_STORAGE_KEY=
-AZURE_CONTAINER=
+S3_ENDPOINT=  # Optional: for MinIO or other S3-compatible services
 
 # Redis Configuration (if STORAGE_BACKEND=redis)
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_PASSWORD=
 REDIS_DB=0
-
-# PostgreSQL Configuration (if STORAGE_BACKEND=postgresql)
-PG_HOST=localhost
-PG_PORT=5432
-PG_DATABASE=reductrai
-PG_USER=postgres
-PG_PASSWORD=
 EOF
 
 # Create README for package
@@ -412,7 +397,7 @@ Edit `.env` file to configure:
 - **License key** (required)
 - **Backend integrations** (Datadog, New Relic, Prometheus, OTLP)
 - **Compression settings** (level, mode, sample rate)
-- **Storage backend** (local, S3, GCS, Azure, Redis, PostgreSQL)
+- **Storage backend** (local, S3-compatible, Redis)
 - **AI model** (Mistral, Llama2)
 
 ## Storage Options
@@ -423,46 +408,35 @@ STORAGE_BACKEND=local
 STORAGE_PATH=/app/data/compression-logs
 ```
 
-### Amazon S3
+### S3-Compatible Storage
+Works with AWS S3, MinIO, DigitalOcean Spaces, and any S3-compatible service:
+
 ```bash
+# AWS S3
 STORAGE_BACKEND=s3
 AWS_REGION=us-east-1
 AWS_ACCESS_KEY_ID=your_key
 AWS_SECRET_ACCESS_KEY=your_secret
 S3_BUCKET=your-bucket
-```
 
-### Google Cloud Storage
-```bash
-STORAGE_BACKEND=gcs
-GCP_PROJECT_ID=your-project
-GCS_BUCKET=your-bucket
-GCS_KEYFILE=/path/to/keyfile.json
-```
-
-### Azure Blob Storage
-```bash
-STORAGE_BACKEND=azure
-AZURE_STORAGE_ACCOUNT=your_account
-AZURE_STORAGE_KEY=your_key
-AZURE_CONTAINER=your-container
+# MinIO or Other S3-Compatible
+STORAGE_BACKEND=s3
+AWS_REGION=us-east-1
+AWS_ACCESS_KEY_ID=your_key
+AWS_SECRET_ACCESS_KEY=your_secret
+S3_BUCKET=your-bucket
+S3_ENDPOINT=http://minio:9000
 ```
 
 ### Redis
+High-speed caching storage:
+
 ```bash
 STORAGE_BACKEND=redis
 REDIS_HOST=localhost
 REDIS_PORT=6379
-```
-
-### PostgreSQL
-```bash
-STORAGE_BACKEND=postgresql
-PG_HOST=localhost
-PG_PORT=5432
-PG_DATABASE=reductrai
-PG_USER=postgres
-PG_PASSWORD=your_password
+REDIS_PASSWORD=your_password  # Optional
+REDIS_DB=0
 ```
 
 ## Monitoring
