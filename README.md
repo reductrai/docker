@@ -289,6 +289,43 @@ open http://localhost:5173
 ## Configuration
 
 See [docker-compose.yml](./docker-compose.yml) for full configuration options.
+> ℹ️ Runtime configuration (images, environment variables, ports, volumes) now lives in
+> [`../deploy/config/services/docker-compose.services.yml`](../deploy/config/services/docker-compose.services.yml).
+> The root `docker-compose.yml` simply extends those canonical definitions so Docker, Helm, and
+> standalone installers stay in sync.
+
+## Optional Service Profiles
+### Smoke Test
+
+A helper script exercises the proxy-only, UI, AI, and combined stacks. Run it from the repo root (docker and curl required):
+
+```bash
+./reductrai-docker/scripts/smoke-test.sh
+```
+
+The script brings up each profile combination, checks service health endpoints, then tears everything down.
+
+
+By default `docker compose up` will start only the core proxy service. Enable additional components
+on demand with Compose profiles:
+
+```bash
+# Proxy + dashboard UI
+docker compose --profile ui up -d
+
+# Proxy + AI query stack (Ollama + AI API)
+docker compose --profile ai up -d
+
+# Full stack (proxy, dashboard, AI)
+docker compose --profile ui --profile ai up -d
+
+# Stop/remove everything
+docker compose down
+```
+
+The `ui` profile activates the dashboard container, while the `ai` profile enables both the Ollama
+LLM runtime and the AI query service. Profiles can be combined as needed without editing the compose
+file.
 
 ## Repository Structure
 

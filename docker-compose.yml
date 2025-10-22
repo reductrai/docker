@@ -1,157 +1,27 @@
 services:
   # ReductrAI Proxy - Main service
   proxy:
-    image: reductrai/proxy:${REDUCTRAI_VERSION:-latest}
-    container_name: reductrai-proxy
-    ports:
-      - "8080:8080"
-    deploy:
-      resources:
-        limits:
-          cpus: '2'
-          memory: 2G
-        reservations:
-          cpus: '1'
-          memory: 1G
-    environment:
-      # License (required)
-      - REDUCTRAI_LICENSE_KEY=${REDUCTRAI_LICENSE_KEY}
-
-      # Proxy core configuration
-      - NODE_ENV=${NODE_ENV:-production}
-      - REDUCTRAI_COMPRESSION=${REDUCTRAI_COMPRESSION:-true}
-      - REDUCTRAI_COMPRESSION_LEVEL=${REDUCTRAI_COMPRESSION_LEVEL:-heavy}
-
-      # Proxy mode configuration
-      - PROXY_MODE=${PROXY_MODE:-sample}
-      - SAMPLE_RATE=${SAMPLE_RATE:-0.1}
-
-      # Forward destination
-      - FORWARD_TO=${FORWARD_TO:-https://api.datadoghq.com}
-
-      # Backend services (REQUIRED for production - see .env.example)
-      - DATADOG_API_KEY=${DATADOG_API_KEY:-}
-      - DATADOG_ENDPOINT=${DATADOG_ENDPOINT:-https://api.datadoghq.com}
-      - NEW_RELIC_API_KEY=${NEW_RELIC_API_KEY:-}
-      - PROMETHEUS_ENDPOINT=${PROMETHEUS_ENDPOINT:-}
-      - OTLP_ENDPOINT=${OTLP_ENDPOINT:-}
-
-      # Tiered storage configuration
-      - STORAGE_HOT_ENABLED=${STORAGE_HOT_ENABLED:-true}
-      - STORAGE_HOT_RETENTION_DAYS=${STORAGE_HOT_RETENTION_DAYS:-7}
-      - STORAGE_HOT_PATH=${STORAGE_HOT_PATH:-/app/data/hot}
-      - STORAGE_WARM_ENABLED=${STORAGE_WARM_ENABLED:-true}
-      - STORAGE_WARM_RETENTION_DAYS=${STORAGE_WARM_RETENTION_DAYS:-30}
-      - STORAGE_WARM_PATH=${STORAGE_WARM_PATH:-/app/data/warm}
-      - STORAGE_WARM_AGGREGATION=${STORAGE_WARM_AGGREGATION:-5m}
-      - STORAGE_COLD_ENABLED=${STORAGE_COLD_ENABLED:-true}
-      - STORAGE_COLD_RETENTION_DAYS=${STORAGE_COLD_RETENTION_DAYS:-365}
-      - STORAGE_COLD_PATH=${STORAGE_COLD_PATH:-/app/data/cold}
-      - STORAGE_COLD_AGGREGATION=${STORAGE_COLD_AGGREGATION:-1h}
-      - STORAGE_COLD_TYPE=${STORAGE_COLD_TYPE:-local}
-
-      # AWS S3
-      - S3_BUCKET=${S3_BUCKET:-}
-      - S3_REGION=${S3_REGION:-us-east-1}
-      - S3_ACCESS_KEY=${S3_ACCESS_KEY:-}
-      - S3_SECRET_KEY=${S3_SECRET_KEY:-}
-      - S3_ENDPOINT=${S3_ENDPOINT:-}
-
-      # Google Cloud Storage
-      - GCS_BUCKET=${GCS_BUCKET:-}
-      - GCS_PROJECT_ID=${GCS_PROJECT_ID:-}
-      - GCS_CREDENTIALS_PATH=${GCS_CREDENTIALS_PATH:-/app/config/gcs-credentials.json}
-
-      # Azure Blob Storage
-      - AZURE_STORAGE_ACCOUNT=${AZURE_STORAGE_ACCOUNT:-}
-      - AZURE_STORAGE_KEY=${AZURE_STORAGE_KEY:-}
-      - AZURE_CONTAINER=${AZURE_CONTAINER:-reductrai-cold}
-
-      # Redis
-      - REDIS_HOST=${REDIS_HOST:-}
-      - REDIS_PORT=${REDIS_PORT:-6379}
-      - REDIS_PASSWORD=${REDIS_PASSWORD:-}
-      - REDIS_DB=${REDIS_DB:-0}
-      - REDIS_TTL_DAYS=${REDIS_TTL_DAYS:-365}
-
-      # PostgreSQL
-      - POSTGRES_HOST=${POSTGRES_HOST:-}
-      - POSTGRES_PORT=${POSTGRES_PORT:-5432}
-      - POSTGRES_DB=${POSTGRES_DB:-reductrai}
-      - POSTGRES_USER=${POSTGRES_USER:-}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-}
-      - POSTGRES_SCHEMA=${POSTGRES_SCHEMA:-cold_storage}
-
-      # Data retention policies
-      - AUTO_CLEANUP_ENABLED=${AUTO_CLEANUP_ENABLED:-true}
-      - CLEANUP_SCHEDULE=${CLEANUP_SCHEDULE:-0 2 * * *}
-      - COLD_COMPRESSION_ALGORITHM=${COLD_COMPRESSION_ALGORITHM:-zstd}
-      - COLD_COMPRESSION_LEVEL=${COLD_COMPRESSION_LEVEL:-9}
-
-      # Advanced settings
-      - REDUCTRAI_PORT=${REDUCTRAI_PORT:-8080}
-      - REDUCTRAI_HOST=${REDUCTRAI_HOST:-0.0.0.0}
-      - LOCAL_LLM_ENDPOINT=${LOCAL_LLM_ENDPOINT:-http://ai-query:8081}
-    volumes:
-      - reductrai-data:/app/data
-    networks:
-      - reductrai
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    extends:
+      file: ../deploy/config/services/docker-compose.services.yml
+      service: proxy
 
   # Dashboard UI
   dashboard:
-    image: reductrai/dashboard:${REDUCTRAI_VERSION:-latest}
-    container_name: reductrai-dashboard
-    ports:
-      - "5173:80"
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://proxy:8080}
-    depends_on:
-      - proxy
-    networks:
-      - reductrai
-    restart: unless-stopped
+    extends:
+      file: ../deploy/config/services/docker-compose.services.yml
+      service: dashboard
 
   # Ollama LLM Service
   ollama:
-    image: reductrai/ollama:${REDUCTRAI_VERSION:-latest}
-    container_name: reductrai-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama-data:/root/.ollama
-    networks:
-      - reductrai
-    restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "ollama", "list"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+    extends:
+      file: ../deploy/config/services/docker-compose.services.yml
+      service: ollama
 
   # AI Query Service (Optional - for local LLM)
   ai-query:
-    image: reductrai/ai-query:${REDUCTRAI_VERSION:-latest}
-    container_name: reductrai-ai-query
-    ports:
-      - "8081:8081"
-    environment:
-      - OLLAMA_HOST=${OLLAMA_HOST:-http://ollama:11434}
-      - AI_MODEL=${AI_MODEL:-mistral}
-      - AI_QUERY_PORT=${AI_QUERY_PORT:-8081}
-    volumes:
-      - ai-models:/models
-      - reductrai-data:/app/data
-    networks:
-      - reductrai
-    depends_on:
-      - ollama
-    restart: unless-stopped
+    extends:
+      file: ../deploy/config/services/docker-compose.services.yml
+      service: ai-query
 
 networks:
   reductrai:

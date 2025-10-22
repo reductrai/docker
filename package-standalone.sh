@@ -22,12 +22,20 @@ PROXY_DIR="${MONOREPO_ROOT}reductrai-proxy"
 DASHBOARD_DIR="${MONOREPO_ROOT}reductrai-dashboard"
 AI_QUERY_DIR="${MONOREPO_ROOT}reductrai-ai-query"
 CORE_DIR="${MONOREPO_ROOT}reductrai-core"
+CONFIG_SYNC_SCRIPT="${MONOREPO_ROOT}deploy/config/sync-services.js"
+CONFIG_ENV_TEMPLATE="${MONOREPO_ROOT}deploy/config/generated/standalone.env.example"
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}ReductrAI Standalone Package Builder${NC}"
 echo -e "${GREEN}Version: ${VERSION}${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
+
+# Sync shared configuration manifests
+if [ -f "$CONFIG_SYNC_SCRIPT" ]; then
+    echo -e "${YELLOW}🔁 Syncing shared configuration...${NC}"
+    node "$CONFIG_SYNC_SCRIPT"
+fi
 
 # Clean previous build
 echo -e "${YELLOW}🧹 Cleaning previous build...${NC}"
@@ -265,63 +273,15 @@ chmod +x "${BUILD_DIR}/bin/"*.sh
 echo -e "${YELLOW}📝 Creating configuration files...${NC}"
 mkdir -p "${BUILD_DIR}/config"
 
-# Create .env.example
-cat > "${BUILD_DIR}/config/.env.example" <<'EOF'
+if [ -f "$CONFIG_ENV_TEMPLATE" ]; then
+    cp "$CONFIG_ENV_TEMPLATE" "${BUILD_DIR}/config/.env.example"
+else
+    echo -e "${YELLOW}⚠️ Shared .env template not found; falling back to legacy template${NC}"
+    cat > "${BUILD_DIR}/config/.env.example" <<'EOF'
 # ReductrAI Configuration
-
-# License (Required)
 REDUCTRAI_LICENSE_KEY=RF-DEMO-2025
-
-# Proxy Configuration
-REDUCTRAI_PORT=8080
-REDUCTRAI_HOST=0.0.0.0
-REDUCTRAI_COMPRESSION=true
-REDUCTRAI_COMPRESSION_LEVEL=heavy  # light|medium|heavy
-
-# Proxy Mode
-PROXY_MODE=sample  # forward-all|sample|query-only
-SAMPLE_RATE=0.1    # 0.1 = 10% forwarded, 90% cost savings
-
-# Datadog Integration (Optional)
-DATADOG_API_KEY=
-DATADOG_ENDPOINT=https://api.datadoghq.com
-
-# New Relic Integration (Optional)
-NEW_RELIC_API_KEY=
-
-# Prometheus Integration (Optional)
-PROMETHEUS_ENDPOINT=http://prometheus:9090
-
-# OTLP Integration (Optional)
-OTLP_ENDPOINT=http://jaeger:4318
-
-# Forward Destination
-FORWARD_TO=https://api.datadoghq.com
-
-# AI Query Configuration (Optional)
-LOCAL_LLM_ENDPOINT=http://localhost:8081
-OLLAMA_HOST=http://localhost:11434
-AI_MODEL=mistral
-AI_QUERY_PORT=8081
-
-# Storage Configuration
-STORAGE_BACKEND=local  # local|s3|redis
-STORAGE_PATH=/app/data/compression-logs
-
-# S3 Configuration (if STORAGE_BACKEND=s3)
-# Works with AWS S3, MinIO, DigitalOcean Spaces, and any S3-compatible storage
-AWS_REGION=us-east-1
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
-S3_BUCKET=
-S3_ENDPOINT=  # Optional: for MinIO or other S3-compatible services
-
-# Redis Configuration (if STORAGE_BACKEND=redis)
-REDIS_HOST=localhost
-REDIS_PORT=6379
-REDIS_PASSWORD=
-REDIS_DB=0
 EOF
+fi
 
 # Create README for package
 cat > "${BUILD_DIR}/README.md" <<'EOF'
