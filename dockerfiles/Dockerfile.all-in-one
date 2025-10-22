@@ -140,7 +140,7 @@ logfile=/var/log/supervisor/supervisord.log
 pidfile=/var/run/supervisord.pid
 
 [program:proxy]
-command=npx tsx apps/proxy/src/index.ts
+command=/app/proxy/node_modules/.bin/tsx apps/proxy/src/index.ts
 directory=/app/proxy
 autostart=true
 autorestart=true

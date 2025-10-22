@@ -1,0 +1,18 @@
+# Ollama with Mistral pre-installed
+FROM ollama/ollama:latest as downloader
+
+# Download Mistral model during build
+RUN ollama serve & \
+    SERVER_PID=$! && \
+    sleep 10 && \
+    ollama pull mistral && \
+    kill $SERVER_PID && \
+    wait $SERVER_PID 2>/dev/null || true
+
+# Final image with model included
+FROM ollama/ollama:latest
+COPY --from=downloader /root/.ollama /root/.ollama
+
+EXPOSE 11434
+ENTRYPOINT ["/bin/ollama"]
+CMD ["serve"]
