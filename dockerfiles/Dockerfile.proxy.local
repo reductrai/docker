@@ -5,13 +5,14 @@ FROM node:20-slim
 
 WORKDIR /app
 
-# Install curl for healthcheck and build tools
+# Install curl for healthcheck, build tools, and gosu for permission management
 RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     ca-certificates \
     python3 \
     make \
     g++ \
+    gosu \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the entire reductrai-proxy source
@@ -23,8 +24,23 @@ RUN npm install
 # Build the TypeScript code
 RUN npm run build || true
 
-# Create data directory
-RUN mkdir -p /app/data/compression-logs
+# Create data directories with proper permissions
+RUN mkdir -p /app/data/compression-logs /app/data/hot /app/data/warm /app/data/cold && \
+    chown -R node:node /app /app/data && \
+    chmod -R 755 /app/data
+
+# Create entrypoint script to ensure permissions at runtime
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+# Ensure data directories exist with correct permissions\n\
+mkdir -p /app/data/compression-logs /app/data/hot /app/data/warm /app/data/cold\n\
+chown -R node:node /app/data\n\
+chmod -R 755 /app/data\n\
+\n\
+# Execute command as node user\n\
+exec gosu node "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 8080
@@ -34,4 +50,5 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
   CMD curl -f http://localhost:8080/health || exit 1
 
 # Start server with tsx for development (will work even if build fails)
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["npx", "tsx", "apps/proxy/src/index.ts"]

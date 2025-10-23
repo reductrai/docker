@@ -22,6 +22,9 @@ FROM node:18-alpine
 
 WORKDIR /app
 
+# Install su-exec for permission management
+RUN apk add --no-cache su-exec
+
 # Copy package files
 COPY package*.json ./
 
@@ -31,8 +34,23 @@ RUN npm ci --only=production
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Create data directory
-RUN mkdir -p /app/data/compression-logs
+# Create data directories with proper permissions
+RUN mkdir -p /app/data/compression-logs /app/data/hot /app/data/warm /app/data/cold && \
+    chown -R node:node /app /app/data && \
+    chmod -R 755 /app/data
+
+# Create entrypoint script to ensure permissions at runtime
+RUN echo '#!/bin/sh\n\
+set -e\n\
+\n\
+# Ensure data directories exist with correct permissions\n\
+mkdir -p /app/data/compression-logs /app/data/hot /app/data/warm /app/data/cold\n\
+chown -R node:node /app/data\n\
+chmod -R 755 /app/data\n\
+\n\
+# Execute command as node user\n\
+exec su-exec node "$@"' > /entrypoint.sh && \
+    chmod +x /entrypoint.sh
 
 # Expose port
 EXPOSE 8081
@@ -41,8 +59,6 @@ EXPOSE 8081
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
   CMD node --input-type=module -e "import('http').then(http => http.default.get('http://localhost:8081/health', (r) => r.statusCode === 200 ? process.exit(0) : process.exit(1)))"
 
-# Run as non-root user
-USER node
-
-# Start server
+# Start server as non-root user via entrypoint
+ENTRYPOINT ["/entrypoint.sh"]
 CMD ["node", "dist/server.js"]
