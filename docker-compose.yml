@@ -5,12 +5,6 @@ services:
       file: ../deploy/config/services/docker-compose.services.yml
       service: proxy
 
-  # Dashboard UI
-  dashboard:
-    extends:
-      file: ../deploy/config/services/docker-compose.services.yml
-      service: dashboard
-
   # Ollama LLM Service
   ollama:
     extends:
