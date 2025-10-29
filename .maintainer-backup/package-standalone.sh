@@ -1,6 +1,8 @@
 #!/bin/bash
 # ReductrAI Standalone Package Builder
 # Creates a distributable standalone package with all services
+# Note: Dashboard is deprecated as of 2025-10-26 (AI-first architecture)
+#       This script maintains backward compatibility but dashboard is no longer recommended
 
 set -e
 
@@ -64,20 +66,22 @@ else
     exit 1
 fi
 
-# Build Dashboard
-echo -e "${YELLOW}📦 Building dashboard...${NC}"
+# Build Dashboard (DEPRECATED - kept for backward compatibility)
+echo -e "${YELLOW}📦 Building dashboard (DEPRECATED)...${NC}"
+echo -e "${YELLOW}⚠️  Dashboard is deprecated. Use /metrics endpoint with Prometheus/Grafana${NC}"
 if [ -d "$DASHBOARD_DIR" ]; then
     cd "$DASHBOARD_DIR"
-    npm run build || { echo -e "${RED}❌ Dashboard build failed${NC}"; exit 1; }
+    npm run build || { echo -e "${YELLOW}⚠️  Dashboard build failed (optional - deprecated)${NC}"; }
     cd - > /dev/null
 
-    # Copy dashboard files
-    mkdir -p "${BUILD_DIR}/dashboard"
-    cp -r "${DASHBOARD_DIR}/dist" "${BUILD_DIR}/dashboard/"
-    echo -e "${GREEN}✅ Dashboard built${NC}"
+    # Copy dashboard files if build succeeded
+    if [ -d "${DASHBOARD_DIR}/dist" ]; then
+        mkdir -p "${BUILD_DIR}/dashboard"
+        cp -r "${DASHBOARD_DIR}/dist" "${BUILD_DIR}/dashboard/"
+        echo -e "${GREEN}✅ Dashboard built (backward compatibility only)${NC}"
+    fi
 else
-    echo -e "${RED}❌ Dashboard directory not found: ${DASHBOARD_DIR}${NC}"
-    exit 1
+    echo -e "${YELLOW}⚠️  Dashboard directory not found (optional - deprecated): ${DASHBOARD_DIR}${NC}"
 fi
 
 # Build AI Query Service
@@ -133,19 +137,24 @@ cd ..
 # Wait for proxy to start
 sleep 3
 
-# Start dashboard (nginx or http-server)
-if command -v http-server &> /dev/null; then
-    echo -e "${GREEN}Starting dashboard on port 5173...${NC}"
-    http-server dashboard/dist -p 5173 > logs/dashboard.log 2>&1 &
-    echo $! > logs/dashboard.pid
-elif command -v python3 &> /dev/null; then
-    echo -e "${GREEN}Starting dashboard on port 5173 (Python)...${NC}"
-    cd dashboard/dist
-    python3 -m http.server 5173 > ../../logs/dashboard.log 2>&1 &
-    echo $! > ../../logs/dashboard.pid
-    cd ../..
+# Start dashboard (DEPRECATED - kept for backward compatibility)
+if [ -d "dashboard/dist" ]; then
+    echo -e "⚠️  WARNING: Dashboard is deprecated. Use /metrics endpoint instead."
+    if command -v http-server &> /dev/null; then
+        echo -e "${GREEN}Starting dashboard on port 5173 (deprecated)...${NC}"
+        http-server dashboard/dist -p 5173 > logs/dashboard.log 2>&1 &
+        echo $! > logs/dashboard.pid
+    elif command -v python3 &> /dev/null; then
+        echo -e "${GREEN}Starting dashboard on port 5173 (deprecated, Python)...${NC}"
+        cd dashboard/dist
+        python3 -m http.server 5173 > ../../logs/dashboard.log 2>&1 &
+        echo $! > ../../logs/dashboard.pid
+        cd ../..
+    else
+        echo -e "⚠️  Dashboard skipped (no HTTP server found)"
+    fi
 else
-    echo -e "⚠️  No HTTP server found. Install http-server: npm install -g http-server"
+    echo -e "⚠️  Dashboard not included (deprecated - use /metrics endpoint)"
 fi
 
 # Start AI Query (optional)
@@ -168,9 +177,11 @@ echo -e "${GREEN}✅ All services started!${NC}"
 echo ""
 echo "Services:"
 echo "  - Proxy:     http://localhost:8080"
-echo "  - Dashboard: http://localhost:5173"
-echo "  - AI Query:  http://localhost:8081"
-echo "  - Ollama:    http://localhost:11434"
+echo "  - Metrics:   http://localhost:8080/metrics"
+echo "  - AI Query:  http://localhost:8081 (if enabled)"
+echo "  - Ollama:    http://localhost:11434 (if installed)"
+echo ""
+echo "⚠️  Note: Dashboard is deprecated. Use /metrics endpoint with Prometheus/Grafana"
 echo ""
 echo "Logs: ./logs/"
 echo "Stop: ./bin/stop.sh"

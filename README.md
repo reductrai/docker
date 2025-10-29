@@ -38,16 +38,17 @@ docker-compose up -d
 curl http://localhost:8080/health
 ```
 
-### Option 3: All-in-One Container (Recommended for Getting Started)
+### Option 3: All-in-One Container (Includes Deprecated Dashboard)
 
-Single container with ALL services (Proxy + Dashboard + AI Query + Ollama):
+Single container with ALL services (Proxy + AI Query + Ollama + Dashboard for backward compatibility):
+
+**⚠️ Note:** Dashboard is deprecated as of 2025-10-26. Use `/metrics` endpoint with Prometheus/Grafana or AI Query service for monitoring.
 
 ```bash
-# Basic setup - just proxy and dashboard
+# Basic setup - proxy with metrics endpoint
 docker run -d \
   --name reductrai \
   -p 8080:8080 \
-  -p 5173:5173 \
   -e REDUCTRAI_LICENSE_KEY=RF-DEMO-2025 \
   -e DATADOG_API_KEY=your_datadog_key_here \
   -v reductrai-data:/app/data \
@@ -57,7 +58,6 @@ docker run -d \
 docker run -d \
   --name reductrai \
   -p 8080:8080 \
-  -p 5173:5173 \
   -p 8081:8081 \
   -p 11434:11434 \
   -e REDUCTRAI_LICENSE_KEY=RF-DEMO-2025 \
@@ -71,10 +71,10 @@ docker run -d \
   reductrai/reductrai:latest
 
 # Verify all services
-curl http://localhost:8080/health  # Proxy
-curl http://localhost:5173/        # Dashboard
-curl http://localhost:8081/health  # AI Query
-curl http://localhost:11434/api/tags # Ollama
+curl http://localhost:8080/health   # Proxy health
+curl http://localhost:8080/metrics  # Prometheus metrics
+curl http://localhost:8081/health   # AI Query (if enabled)
+curl http://localhost:11434/api/tags # Ollama (if enabled)
 ```
 
 ### Option 4: Single Service (Proxy Only)
@@ -113,10 +113,12 @@ curl http://localhost:8080/health
 #    AFTER:  DD_AGENT_HOST=localhost:8080
 
 # 4. Access services
-# Dashboard: http://localhost:5173
 # Proxy API: http://localhost:8080
-# AI Query:  http://localhost:8081
+# Metrics:   http://localhost:8080/metrics (use with Prometheus/Grafana)
+# AI Query:  http://localhost:8081 (enable with --profile ai)
 # Health:    http://localhost:8080/health
+
+# Note: Dashboard is deprecated. Use /metrics endpoint with third-party tools.
 ```
 
 ## How ReductrAI Saves You Money
@@ -148,7 +150,7 @@ Your Apps → ReductrAI Proxy → ┌─ Local Storage (100%, compressed, AI-que
 
 ## What Gets Deployed
 
-This docker-compose configuration deploys a **complete ReductrAI stack**:
+This docker-compose configuration deploys the **ReductrAI AI-first architecture**:
 
 - **reductrai-proxy** (port 8080) - Universal monitoring proxy
   - Handles ALL observability data types:
@@ -159,20 +161,21 @@ This docker-compose configuration deploys a **complete ReductrAI stack**:
   - Auto-detects ALL formats: Datadog, Prometheus, OTLP, StatsD, CloudWatch, Splunk, Loki, etc.
   - Stores 100% of data locally (compressed)
   - Forwards 10% sample to your monitoring service
+  - Exposes `/metrics` endpoint for Prometheus/Grafana integration
 
-- **reductrai-dashboard** (port 5173) - Real-time web UI
-  - Live compression statistics
-  - Pattern detection visualization
-  - Data type breakdown
-
-- **reductrai-ai-query** (port 8081) - AI-powered query service
+- **reductrai-ai-query** (port 8081, optional with `--profile ai`) - AI-powered query service
   - Natural language queries against 100% of data
-  - Correlation detection
-  - Anomaly analysis
+  - Correlation detection and anomaly analysis
+  - AI-generated visualizations
 
-- **reductrai-ollama** (port 11434) - Local LLM service
+- **reductrai-ollama** (port 11434, optional with `--profile ai`) - Local LLM service
   - Runs Mistral model for AI queries
   - No data sent to external APIs
+
+**⚠️ Dashboard Deprecation Notice (2025-10-26):**
+The React dashboard has been deprecated in favor of the AI-first architecture. Use:
+- `/metrics` endpoint with Prometheus, Grafana, or Datadog for real-time monitoring
+- AI Query service for natural language analysis and insights
 
 ## Universal Deployment
 
@@ -280,10 +283,10 @@ curl -X POST http://localhost:8080/api/v2/series \
   -d '{"series":[{"metric":"test.metric","points":[['"$(date +%s)"',123]],"type":0}]}'
 
 # Check compression stats
-curl http://localhost:8080/metrics | jq '.compressionLog | length'
+curl http://localhost:8080/metrics
 
-# View in dashboard
-open http://localhost:5173
+# View metrics in Prometheus format
+curl http://localhost:8080/metrics | grep reductrai_
 ```
 
 ## Configuration
@@ -306,26 +309,24 @@ A helper script exercises the proxy-only, UI, AI, and combined stacks. Run it fr
 The script brings up each profile combination, checks service health endpoints, then tears everything down.
 
 
-By default `docker compose up` will start only the core proxy service. Enable additional components
+By default `docker compose up` will start only the core proxy service. Enable AI features
 on demand with Compose profiles:
 
 ```bash
-# Proxy + dashboard UI
-docker compose --profile ui up -d
+# Proxy only (default - includes /metrics endpoint)
+docker compose up -d
 
-# Proxy + AI query stack (Ollama + AI API)
+# Proxy + AI query stack (Ollama + AI API for natural language queries)
 docker compose --profile ai up -d
-
-# Full stack (proxy, dashboard, AI)
-docker compose --profile ui --profile ai up -d
 
 # Stop/remove everything
 docker compose down
 ```
 
-The `ui` profile activates the dashboard container, while the `ai` profile enables both the Ollama
-LLM runtime and the AI query service. Profiles can be combined as needed without editing the compose
-file.
+The `ai` profile enables both the Ollama LLM runtime and the AI query service for natural language
+analysis. Use the `/metrics` endpoint with Prometheus/Grafana for real-time monitoring dashboards.
+
+**Note:** The `ui` profile for dashboard is deprecated and removed. Use `/metrics` endpoint instead.
 
 ## Repository Structure
 
@@ -370,10 +371,11 @@ Two scripts are available for building and publishing Docker images:
 This builds images for local testing without publishing to Docker Hub.
 
 Builds:
-- `reductrai/proxy:latest` - Proxy service only
-- `reductrai/dashboard:latest` - Dashboard UI only
+- `reductrai/proxy:latest` - Proxy service only (recommended)
 - `reductrai/ai-query:latest` - AI Query service only
-- `reductrai/reductrai:latest` - All-in-one image (recommended for getting started)
+- `reductrai/reductrai:latest` - All-in-one image (includes deprecated dashboard for backward compatibility)
+
+**Note:** Dashboard image is deprecated. Use proxy with `/metrics` endpoint.
 
 ### Build and Publish to Docker Hub
 ```bash

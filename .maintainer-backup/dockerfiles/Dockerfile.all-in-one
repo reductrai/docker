@@ -1,5 +1,9 @@
 # ReductrAI All-in-One Docker Image
-# This image contains proxy, dashboard, ai-query, and ollama in a single container
+# This image contains proxy, dashboard (DEPRECATED), ai-query, and ollama in a single container
+#
+# NOTE: Dashboard is deprecated as of 2025-10-26 (AI-first architecture)
+#       Use /metrics endpoint with Prometheus/Grafana or AI Query service instead
+#       Dashboard is kept in this image for backward compatibility only
 #
 # ENVIRONMENT VARIABLES:
 # All environment variables are passed through to the services.
@@ -29,9 +33,9 @@
 #   AZURE_STORAGE_ACCOUNT, AZURE_STORAGE_KEY, AZURE_CONTAINER
 #
 # PORTS:
-#   8080 - Proxy API
-#   5173 - Dashboard UI
-#   8081 - AI Query Service
+#   8080 - Proxy API (+ /metrics endpoint)
+#   5173 - Dashboard UI (DEPRECATED - use /metrics instead)
+#   8081 - AI Query Service (for natural language queries)
 #   11434 - Ollama LLM
 #
 # VOLUMES:
@@ -66,7 +70,7 @@ FROM base AS proxy-builder
 COPY --from=reductrai/proxy:latest /app /app/proxy
 
 # ============================================================================
-# STAGE 2: Build Dashboard
+# STAGE 2: Build Dashboard (DEPRECATED - kept for backward compatibility)
 # ============================================================================
 FROM base AS dashboard-builder
 COPY --from=reductrai/dashboard:latest /usr/share/nginx/html /app/dashboard
@@ -158,6 +162,8 @@ stdout_logfile=/dev/stdout
 stdout_logfile_maxbytes=0
 stderr_logfile=/dev/stderr
 stderr_logfile_maxbytes=0
+priority=999
+; Note: Dashboard is deprecated. Use /metrics endpoint with Prometheus/Grafana
 
 [program:ai-query]
 command=node dist/server.js

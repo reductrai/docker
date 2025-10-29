@@ -1,6 +1,7 @@
 #!/bin/bash
 # ReductrAI - Build All Services
 # This script builds Docker images for all ReductrAI services
+# Note: Dashboard is deprecated as of 2025-10-26 (AI-first architecture)
 
 set -e
 
@@ -67,9 +68,6 @@ echo "-------------------------------"
 # Build Proxy (Main Service)
 build_service "proxy" "${BASE_DIR}/reductrai-proxy" "Dockerfile"
 
-# Build Dashboard
-build_service "dashboard" "${BASE_DIR}/reductrai-dashboard" "Dockerfile"
-
 # Build AI Query Service
 build_service "ai-query" "${BASE_DIR}/reductrai-ai-query" "Dockerfile"
 
@@ -115,6 +113,15 @@ echo -e "${GREEN}=========================================="
 echo -e "   Build Complete!"
 echo -e "==========================================${NC}"
 echo ""
-echo "All services have been built. To run the system:"
-echo "  ./deploy.sh"
+echo "Images built successfully:"
+echo "  • reductrai/proxy:latest (Port 8080)"
+echo "  • reductrai/ai-query:latest (Port 8081)"
+echo "  • reductrai/ollama:latest (Port 11434)"
+echo ""
+echo "Note: Dashboard is deprecated. Use /metrics endpoint with Prometheus/Grafana"
+echo "      or AI Query service for natural language analysis."
+echo ""
+echo "To run the system:"
+echo "  docker-compose up -d                    # Proxy only"
+echo "  docker-compose --profile ai up -d       # Proxy + AI services"
 echo ""

@@ -3,6 +3,7 @@ set -e
 
 # ReductrAI Docker Image Build Script
 # This script builds all ReductrAI Docker images from source
+# Note: Dashboard is deprecated as of 2025-10-26 (AI-first architecture)
 
 echo "🏗️  Building ReductrAI Docker Images"
 echo "===================================="
@@ -15,33 +16,19 @@ fi
 
 # Check if source directories exist
 PROXY_DIR="../reductrai-proxy"
-DASHBOARD_DIR="../reductrai-dashboard"
 AI_QUERY_DIR="../reductrai-ai-query"
-OLLAMA_DIR="../reductrai-ollama"
 
 if [ ! -d "$PROXY_DIR" ]; then
     echo "❌ Error: $PROXY_DIR not found"
     echo "   Please clone all repositories in the same parent directory:"
     echo "   - reductrai-proxy"
-    echo "   - reductrai-dashboard"
     echo "   - reductrai-ai-query"
-    echo "   - reductrai-ollama"
     echo "   - reductrai-docker (this repo)"
-    exit 1
-fi
-
-if [ ! -d "$DASHBOARD_DIR" ]; then
-    echo "❌ Error: $DASHBOARD_DIR not found"
     exit 1
 fi
 
 if [ ! -d "$AI_QUERY_DIR" ]; then
     echo "❌ Error: $AI_QUERY_DIR not found"
-    exit 1
-fi
-
-if [ ! -d "$OLLAMA_DIR" ]; then
-    echo "❌ Error: $OLLAMA_DIR not found"
     exit 1
 fi
 
@@ -61,17 +48,6 @@ docker build \
     .
 
 echo "✅ reductrai/proxy:$VERSION built successfully"
-echo ""
-
-# Build dashboard image
-echo "🔨 Building reductrai/dashboard:$VERSION..."
-docker build \
-    -t "reductrai/dashboard:$VERSION" \
-    -t "reductrai/dashboard:latest" \
-    -f "dockerfiles/Dockerfile.dashboard" \
-    "$DASHBOARD_DIR"
-
-echo "✅ reductrai/dashboard:$VERSION built successfully"
 echo ""
 
 # Build AI query image
@@ -98,7 +74,7 @@ echo ""
 
 # Show built images
 echo "📋 Built images:"
-docker images | grep -E "^reductrai/(proxy|dashboard|ai-query|reductrai)" | head -10
+docker images | grep -E "^reductrai/(proxy|ai-query|reductrai)" | head -10
 
 echo ""
 echo "✨ All images built successfully!"
@@ -108,8 +84,14 @@ echo "  1. Configure .env file:"
 echo "     cp .env.example .env"
 echo "     nano .env"
 echo ""
-echo "  2. Start services:"
+echo "  2. Start services (proxy only):"
 echo "     docker-compose up -d"
 echo ""
-echo "  3. Check health:"
+echo "  3. Or start with AI services:"
+echo "     docker-compose --profile ai up -d"
+echo ""
+echo "  4. Check health:"
 echo "     curl http://localhost:8080/health"
+echo ""
+echo "Note: Dashboard is deprecated. Use /metrics endpoint with Prometheus/Grafana"
+echo "      or AI Query service for natural language analysis."
