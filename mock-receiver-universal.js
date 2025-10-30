@@ -1,9 +1,10 @@
 /**
  * Universal Mock Monitoring Service Receiver
- * Captures ALL monitoring formats supported by ReductrAI proxy
+ * Captures ALL monitoring formats supported by ReductrAI proxy (20+ services)
  *
- * Supports: Datadog, New Relic, Dynatrace, Splunk, CloudWatch,
- * Prometheus, OTLP, Honeycomb, Elastic APM, Grafana Loki, InfluxDB, StatsD
+ * Supports: Datadog, New Relic, Dynatrace, Splunk, AWS CloudWatch, Azure Monitor,
+ * Google Cloud, Prometheus, OTLP, Honeycomb, Elastic APM, Grafana Loki, InfluxDB,
+ * StatsD, AppDynamics, Sumo Logic, LogDNA/Mezmo, SignalFx, Lightstep, + Generic APIs
  */
 
 const express = require('express');
@@ -299,6 +300,62 @@ app.post('/v1/projects/:projectId/traces', (req, res) => {
 });
 
 // ============================================================================
+// SUMO LOGIC
+// ============================================================================
+
+app.post('/receiver/v1/http/*', (req, res) => {
+  logPayload('sumologic', 'HTTP SOURCE', req.body);
+  res.status(200).json({ status: 'ok' });
+});
+
+app.post('/api/v1/collector/*', (req, res) => {
+  logPayload('sumologic', 'COLLECTOR', req.body);
+  res.status(200).json({ status: 'ok' });
+});
+
+// ============================================================================
+// LOGDNA / MEZMO
+// ============================================================================
+
+app.post('/logs/ingest', (req, res) => {
+  logPayload('logdna', 'INGEST', req.body);
+  res.status(200).json({ status: 'ok' });
+});
+
+app.post('/v1/ingest', (req, res) => {
+  logPayload('mezmo', 'INGEST V1', req.body);
+  res.status(200).json({ status: 'ok' });
+});
+
+// ============================================================================
+// SIGNALFX
+// ============================================================================
+
+app.post('/v2/datapoint', (req, res) => {
+  logPayload('signalfx', 'DATAPOINT', req.body);
+  res.status(200).json({ code: 'OK' });
+});
+
+app.post('/v2/event', (req, res) => {
+  logPayload('signalfx', 'EVENT', req.body);
+  res.status(200).json({ code: 'OK' });
+});
+
+// ============================================================================
+// LIGHTSTEP
+// ============================================================================
+
+app.post('/api/v2/reports', (req, res) => {
+  logPayload('lightstep', 'REPORTS', req.body);
+  res.status(200).json({});
+});
+
+app.post('/traces', (req, res) => {
+  logPayload('lightstep', 'TRACES', req.body);
+  res.status(200).json({});
+});
+
+// ============================================================================
 // GENERIC / CATCH-ALL
 // ============================================================================
 
@@ -338,6 +395,10 @@ app.get('/stats', (req, res) => {
       'InfluxDB (v1, v2)',
       'StatsD',
       'AppDynamics (analytics events)',
+      'Sumo Logic (HTTP source, collector)',
+      'LogDNA/Mezmo (logs ingest)',
+      'SignalFx (datapoints, events)',
+      'Lightstep (reports, traces)',
       'Generic (catch-all /api/*)'
     ]
   });
@@ -363,13 +424,14 @@ app.listen(PORT, () => {
 ║  Port: ${PORT}                                                  ║
 ╚═══════════════════════════════════════════════════════════╝
 
-✅ Supports ALL major monitoring services:
+✅ Supports 20+ monitoring services (matches proxy's universal support):
    • Datadog          • New Relic        • Dynatrace
    • Splunk           • AWS CloudWatch   • Azure Monitor
    • Google Cloud     • Prometheus       • OTLP
    • Honeycomb        • Elastic APM      • Grafana Loki
    • InfluxDB         • StatsD           • AppDynamics
-   • Generic APIs
+   • Sumo Logic       • LogDNA/Mezmo     • SignalFx
+   • Lightstep        • Generic APIs
 
 📊 View captured data:
    curl http://localhost:${PORT}/stats

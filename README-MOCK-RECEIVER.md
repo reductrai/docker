@@ -16,7 +16,7 @@ When your Datadog/New Relic/Prometheus trial expires, you can't see their dashbo
 npm run mock-receiver-universal
 ```
 
-**Supported services:**
+**Supported services (20+)** - matches proxy's universal support:
 - **Datadog** (metrics, traces, logs, events)
 - **New Relic** (metrics, events, logs, traces)
 - **Dynatrace** (metrics v2, custom devices, logs)
@@ -32,6 +32,10 @@ npm run mock-receiver-universal
 - **InfluxDB** (v1, v2)
 - **StatsD**
 - **AppDynamics** (analytics events)
+- **Sumo Logic** (HTTP source, collector)
+- **LogDNA/Mezmo** (logs ingest)
+- **SignalFx** (datapoints, events)
+- **Lightstep** (reports, traces)
 - **Generic catch-all** (`/api/*`)
 
 ### 2. Basic Mock Receiver
