@@ -1,0 +1,11 @@
+{
+  "name": "reductrai-testing",
+  "version": "1.0.0",
+  "description": "Testing utilities for ReductrAI",
+  "scripts": {
+    "mock-receiver": "node mock-receiver.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+}

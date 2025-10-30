@@ -97,6 +97,43 @@ docker run -d \
 curl http://localhost:8080/health
 ```
 
+## Verify Forwarding Works (Without Paid Monitoring)
+
+**Question:** "My Datadog/New Relic trial expired. How do I verify forwarding still works?"
+
+**Answer:** Run the verification script:
+
+```bash
+./verify-forwarding.sh
+```
+
+This script provides **three ways** to verify forwarding without requiring paid monitoring subscriptions:
+
+1. ✅ **HTTP Status Codes** - Instant proof that data was accepted
+2. ✅ **Mock Receiver** - See exact payloads being forwarded
+3. ✅ **Free Monitoring Stack** - Prometheus + Grafana + Jaeger (local)
+
+**Quick verification without the script:**
+
+```bash
+# Method 1: Check proxy logs for success codes
+docker logs reductrai-proxy | grep "status 202"
+# "202 Accepted" = Forwarding works!
+
+# Method 2: Use mock receiver to see data
+npm run mock-receiver
+curl http://localhost:8888/stats  # Shows captured payloads
+
+# Method 3: Start free local monitoring
+docker-compose -f docker-compose.self-hosted.yml up -d
+# Opens Grafana at http://localhost:3001
+```
+
+**See detailed guides:**
+- `./verify-forwarding.sh` - Automated verification (recommended)
+- `TESTING.md` - Complete testing guide
+- `README-MOCK-RECEIVER.md` - Mock receiver documentation
+
 ## Quick Start
 
 After installation:
