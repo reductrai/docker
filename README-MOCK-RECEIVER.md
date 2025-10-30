@@ -22,6 +22,8 @@ npm run mock-receiver-universal
 - **Dynatrace** (metrics v2, custom devices, logs)
 - **Splunk HEC** (events, raw, collector)
 - **AWS CloudWatch** (metrics, logs)
+- **Azure Monitor** (Application Insights, Log Analytics)
+- **Google Cloud Monitoring** (metrics, logs, traces)
 - **Prometheus** (remote write, Grafana Cloud)
 - **OTLP** (metrics, traces, logs)
 - **Honeycomb** (events, batch)
@@ -128,6 +130,34 @@ Example output:
   Payload size: 42 bytes
 ```
 
+### Azure Monitor
+```bash
+POST /v2.1/track   # Application Insights (v2.1)
+POST /v2/track     # Application Insights (v2)
+POST /api/logs     # Log Analytics
+```
+
+Example output:
+```
+✅ AZURE-APPINSIGHTS TELEMETRY V2.1
+  Timestamp: 2025-10-30T21:30:15.123Z
+  Payload size: 234 bytes
+```
+
+### Google Cloud Monitoring
+```bash
+POST /v3/projects/:projectId/timeSeries   # Metrics
+POST /v2/entries:write                    # Logging
+POST /v1/projects/:projectId/traces       # Traces
+```
+
+Example output:
+```
+✅ GCP-MONITORING METRICS (my-project-123)
+  Timestamp: 2025-10-30T21:30:45.567Z
+  Payload size: 189 bytes
+```
+
 ### OTLP (OpenTelemetry)
 ```bash
 POST /v1/metrics   # Metrics
@@ -157,7 +187,6 @@ Example output:
 ### Other Services
 
 The universal receiver also supports:
-- **CloudWatch** (metrics, logs via `x-amz-target` header)
 - **Honeycomb** (events `/1/events/:dataset`, batch `/1/batch/:dataset`)
 - **Elastic APM** (events `/intake/v2/events`, bulk `/_bulk`)
 - **Grafana Loki** (logs `/loki/api/v1/push`)
@@ -217,6 +246,8 @@ Response:
     "Dynatrace (metrics v2, custom devices, logs)",
     "Splunk HEC (events, raw, collector)",
     "AWS CloudWatch (metrics, logs)",
+    "Azure Monitor (Application Insights, Log Analytics)",
+    "Google Cloud Monitoring (metrics, logs, traces)",
     "Prometheus (remote write)",
     "OTLP (metrics, traces, logs)",
     "Honeycomb (events, batch)",

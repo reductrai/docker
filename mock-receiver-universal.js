@@ -261,6 +261,44 @@ app.post('/api/analyticsevents/v1/*', (req, res) => {
 });
 
 // ============================================================================
+// AZURE MONITOR / APPLICATION INSIGHTS
+// ============================================================================
+
+app.post('/v2.1/track', (req, res) => {
+  logPayload('azure-appinsights', 'TELEMETRY V2.1', req.body);
+  res.status(200).json({ itemsReceived: 1, itemsAccepted: 1, errors: [] });
+});
+
+app.post('/v2/track', (req, res) => {
+  logPayload('azure-appinsights', 'TELEMETRY V2', req.body);
+  res.status(200).json({ itemsReceived: 1, itemsAccepted: 1, errors: [] });
+});
+
+app.post('/api/logs', (req, res) => {
+  logPayload('azure-loganalytics', 'LOGS', req.body);
+  res.status(200).json({ status: 'ok' });
+});
+
+// ============================================================================
+// GOOGLE CLOUD MONITORING (STACKDRIVER)
+// ============================================================================
+
+app.post('/v3/projects/:projectId/timeSeries', (req, res) => {
+  logPayload('gcp-monitoring', `METRICS (${req.params.projectId})`, req.body);
+  res.status(200).json({});
+});
+
+app.post('/v2/entries:write', (req, res) => {
+  logPayload('gcp-logging', 'LOGS', req.body);
+  res.status(200).json({});
+});
+
+app.post('/v1/projects/:projectId/traces', (req, res) => {
+  logPayload('gcp-trace', `TRACES (${req.params.projectId})`, req.body);
+  res.status(200).json({});
+});
+
+// ============================================================================
 // GENERIC / CATCH-ALL
 // ============================================================================
 
@@ -290,6 +328,8 @@ app.get('/stats', (req, res) => {
       'Dynatrace (metrics v2, custom devices, logs)',
       'Splunk HEC (events, raw, collector)',
       'AWS CloudWatch (metrics, logs)',
+      'Azure Monitor (Application Insights, Log Analytics)',
+      'Google Cloud Monitoring (metrics, logs, traces)',
       'Prometheus (remote write)',
       'OTLP (metrics, traces, logs)',
       'Honeycomb (events, batch)',
@@ -325,10 +365,11 @@ app.listen(PORT, () => {
 
 ✅ Supports ALL major monitoring services:
    • Datadog          • New Relic        • Dynatrace
-   • Splunk           • CloudWatch       • Prometheus
-   • OTLP             • Honeycomb        • Elastic APM
-   • Grafana Loki     • InfluxDB         • StatsD
-   • AppDynamics      • Generic APIs
+   • Splunk           • AWS CloudWatch   • Azure Monitor
+   • Google Cloud     • Prometheus       • OTLP
+   • Honeycomb        • Elastic APM      • Grafana Loki
+   • InfluxDB         • StatsD           • AppDynamics
+   • Generic APIs
 
 📊 View captured data:
    curl http://localhost:${PORT}/stats
