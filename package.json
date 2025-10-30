@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "description": "Testing utilities for ReductrAI",
   "scripts": {
-    "mock-receiver": "node mock-receiver.js"
+    "mock-receiver": "node mock-receiver.js",
+    "mock-receiver-universal": "node mock-receiver-universal.js"
   },
   "dependencies": {
     "express": "^4.18.2"
