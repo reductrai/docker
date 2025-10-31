@@ -1,0 +1,41 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "mock-receiver-universal.js",
+      "use": "@vercel/node",
+      "config": {
+        "maxLambdaSize": "50mb"
+      }
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/mock-receiver-universal.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "8888"
+  },
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Access-Control-Allow-Origin",
+          "value": "*"
+        },
+        {
+          "key": "Access-Control-Allow-Methods",
+          "value": "GET, POST, PUT, DELETE, OPTIONS"
+        },
+        {
+          "key": "Access-Control-Allow-Headers",
+          "value": "Content-Type, Authorization, DD-API-KEY, Api-Key, X-License-Key"
+        }
+      ]
+    }
+  ]
+}
