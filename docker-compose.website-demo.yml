@@ -1,0 +1,137 @@
+version: '3.8'
+
+# ReductrAI Website Demo - Complete Live Demo Stack
+# Run with: docker-compose -f docker-compose.website-demo.yml up
+# Access: http://localhost:3000
+
+services:
+  # Universal Mock Receiver (captures all monitoring formats)
+  mock-receiver:
+    build:
+      context: .
+      dockerfile: Dockerfile.mock-receiver
+    ports:
+      - "8888:8888"
+    environment:
+      - PORT=8888
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - reductrai-demo
+
+  # ReductrAI Proxy (main service)
+  proxy:
+    image: reductrai/proxy:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - REDUCTRAI_LICENSE_KEY=DEMO-FREE-TRIAL-2025
+      - FORWARD_TO=http://mock-receiver:8888
+      - PORT=8080
+      - PROXY_MODE=compress-store
+      - SAMPLE_RATE=0.1
+      - STORAGE_ENABLED=true
+      - STORAGE_PATH=/data
+    volumes:
+      - demo-data:/data
+    depends_on:
+      mock-receiver:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - reductrai-demo
+
+  # NASA Telemetry Generator
+  nasa-generator:
+    build:
+      context: ../reductrai-validation
+      dockerfile: Dockerfile.nasa
+    environment:
+      - PROXY_URL=http://proxy:8080
+      - DURATION=86400  # 24 hours
+      - BATCH_SIZE=500
+      - INTERVAL_MS=100
+      - MISSIONS=ISS,Perseverance,JWST,Voyager1
+    depends_on:
+      proxy:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - reductrai-demo
+
+  # Ollama LLM (for AI Query)
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+    networks:
+      - reductrai-demo
+
+  # AI Query Service (STAR OF THE SHOW)
+  ai-query:
+    image: reductrai/ai-query:latest
+    ports:
+      - "8081:8081"
+    environment:
+      - AI_QUERY_PORT=8081
+      - OLLAMA_HOST=http://ollama:11434
+      - AI_MODEL=mistral
+      - PROXY_URL=http://proxy:8080
+      - ENABLE_CORS=true
+    depends_on:
+      ollama:
+        condition: service_healthy
+      proxy:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - reductrai-demo
+
+  # Demo Dashboard (Website UI)
+  demo-dashboard:
+    build:
+      context: ./demo-dashboard
+      dockerfile: Dockerfile
+    ports:
+      - "3000:80"
+    environment:
+      - PROXY_URL=http://proxy:8080
+      - MOCK_RECEIVER_URL=http://mock-receiver:8888
+      - AI_QUERY_URL=http://ai-query:8081
+    depends_on:
+      - proxy
+      - mock-receiver
+      - ai-query
+    networks:
+      - reductrai-demo
+
+volumes:
+  demo-data:
+    driver: local
+  ollama-data:
+    driver: local
+
+networks:
+  reductrai-demo:
+    driver: bridge
