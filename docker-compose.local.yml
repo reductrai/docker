@@ -1,0 +1,144 @@
+# Local Development Docker Configuration
+# This uses locally built images for development and testing
+
+version: '3.8'
+
+services:
+  proxy:
+    image: reductrai/proxy:local
+    container_name: reductrai-proxy-local
+    build:
+      context: ../reductrai-proxy
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      REDUCTRAI_LICENSE_KEY: ${REDUCTRAI_LICENSE_KEY:-RF-DEMO-2025}
+      NODE_ENV: development
+      REDUCTRAI_COMPRESSION: ${REDUCTRAI_COMPRESSION:-true}
+      REDUCTRAI_COMPRESSION_LEVEL: ${REDUCTRAI_COMPRESSION_LEVEL:-heavy}
+      PROXY_MODE: ${PROXY_MODE:-sample}
+      SAMPLE_RATE: ${SAMPLE_RATE:-0.1}
+      # AI Query sampling - critical for preventing CPU saturation
+      AI_QUERY_SAMPLE_RATE: ${AI_QUERY_SAMPLE_RATE:-0.01}
+      # Local observability stack
+      PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT:-http://prometheus:9090}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-http://jaeger:4318}
+      # Storage configuration
+      STORAGE_HOT_ENABLED: ${STORAGE_HOT_ENABLED:-true}
+      STORAGE_HOT_PATH: ${STORAGE_HOT_PATH:-/app/data/hot}
+      STORAGE_WARM_ENABLED: ${STORAGE_WARM_ENABLED:-true}
+      STORAGE_WARM_PATH: ${STORAGE_WARM_PATH:-/app/data/warm}
+      STORAGE_COLD_ENABLED: ${STORAGE_COLD_ENABLED:-true}
+      STORAGE_COLD_PATH: ${STORAGE_COLD_PATH:-/app/data/cold}
+      # Proxy settings
+      REDUCTRAI_PORT: ${REDUCTRAI_PORT:-8080}
+      REDUCTRAI_HOST: ${REDUCTRAI_HOST:-0.0.0.0}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://ai-query:8081}
+      AI_QUERY_ASYNC: ${AI_QUERY_ASYNC:-false}
+      AI_QUERY_BATCH_SIZE: ${AI_QUERY_BATCH_SIZE:-100}
+    ports:
+      - "8080:8080"
+    volumes:
+      - reductrai-data:/app/data
+      - ../reductrai-proxy/apps/proxy/src:/app/apps/proxy/src:ro
+    networks:
+      - reductrai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  ai-query:
+    image: reductrai/ai-query:local
+    container_name: reductrai-ai-query-local
+    build:
+      context: ../reductrai-ai-query
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    ports:
+      - "8081:8081"
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      AI_MODEL: ${AI_MODEL:-mistral}
+      AI_QUERY_PORT: ${AI_QUERY_PORT:-8081}
+    volumes:
+      - ai-models:/models
+      - reductrai-data:/app/data
+      - ../reductrai-ai-query/src:/app/src:ro
+    networks:
+      - reductrai
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: reductrai-ollama-local
+    restart: unless-stopped
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - reductrai
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Local observability stack for development
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: reductrai-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - reductrai
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: reductrai-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=admin
+    volumes:
+      - grafana-data:/var/lib/grafana
+    networks:
+      - reductrai
+
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    container_name: reductrai-jaeger
+    ports:
+      - "16686:16686"
+      - "4318:4318"
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    networks:
+      - reductrai
+
+networks:
+  reductrai:
+    driver: bridge
+
+volumes:
+  reductrai-data:
+  ollama-data:
+  ai-models:
+  prometheus-data:
+  grafana-data:

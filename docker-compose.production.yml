@@ -1,0 +1,161 @@
+# Production Docker Configuration
+# Uses official released images from registry
+
+version: '3.8'
+
+services:
+  proxy:
+    image: reductrai/proxy:${REDUCTRAI_VERSION:-latest}
+    container_name: reductrai-proxy
+    restart: always
+    environment:
+      REDUCTRAI_LICENSE_KEY: ${REDUCTRAI_LICENSE_KEY}
+      NODE_ENV: production
+      REDUCTRAI_COMPRESSION: ${REDUCTRAI_COMPRESSION:-true}
+      REDUCTRAI_COMPRESSION_LEVEL: ${REDUCTRAI_COMPRESSION_LEVEL:-heavy}
+      PROXY_MODE: ${PROXY_MODE:-sample}
+      SAMPLE_RATE: ${SAMPLE_RATE:-0.1}
+      # CRITICAL: AI Query sampling to prevent CPU saturation
+      AI_QUERY_SAMPLE_RATE: ${AI_QUERY_SAMPLE_RATE:-0.01}
+      # Forward to customer's monitoring backend
+      FORWARD_TO: ${FORWARD_TO:-}
+      DATADOG_API_KEY: ${DATADOG_API_KEY:-}
+      DATADOG_ENDPOINT: ${DATADOG_ENDPOINT:-https://api.datadoghq.com}
+      NEW_RELIC_API_KEY: ${NEW_RELIC_API_KEY:-}
+      PROMETHEUS_ENDPOINT: ${PROMETHEUS_ENDPOINT:-}
+      OTLP_ENDPOINT: ${OTLP_ENDPOINT:-}
+      # Storage configuration
+      STORAGE_HOT_ENABLED: ${STORAGE_HOT_ENABLED:-true}
+      STORAGE_HOT_RETENTION_DAYS: ${STORAGE_HOT_RETENTION_DAYS:-7}
+      STORAGE_HOT_PATH: ${STORAGE_HOT_PATH:-/app/data/hot}
+      STORAGE_WARM_ENABLED: ${STORAGE_WARM_ENABLED:-true}
+      STORAGE_WARM_RETENTION_DAYS: ${STORAGE_WARM_RETENTION_DAYS:-30}
+      STORAGE_WARM_PATH: ${STORAGE_WARM_PATH:-/app/data/warm}
+      STORAGE_COLD_ENABLED: ${STORAGE_COLD_ENABLED:-true}
+      STORAGE_COLD_RETENTION_DAYS: ${STORAGE_COLD_RETENTION_DAYS:-365}
+      STORAGE_COLD_PATH: ${STORAGE_COLD_PATH:-/app/data/cold}
+      # Cloud storage options
+      STORAGE_COLD_TYPE: ${STORAGE_COLD_TYPE:-local}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      GCS_BUCKET: ${GCS_BUCKET:-}
+      GCS_PROJECT_ID: ${GCS_PROJECT_ID:-}
+      AZURE_STORAGE_ACCOUNT: ${AZURE_STORAGE_ACCOUNT:-}
+      AZURE_STORAGE_KEY: ${AZURE_STORAGE_KEY:-}
+      # Proxy settings
+      REDUCTRAI_PORT: ${REDUCTRAI_PORT:-8080}
+      REDUCTRAI_HOST: ${REDUCTRAI_HOST:-0.0.0.0}
+      LOCAL_LLM_ENDPOINT: ${LOCAL_LLM_ENDPOINT:-http://ai-query:8081}
+      AI_QUERY_ASYNC: ${AI_QUERY_ASYNC:-false}
+      AI_QUERY_BATCH_SIZE: ${AI_QUERY_BATCH_SIZE:-100}
+    ports:
+      - "${REDUCTRAI_PORT:-8080}:8080"
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+    volumes:
+      - reductrai-data:/app/data
+      - ${GCS_CREDENTIALS_PATH:-./gcs-credentials.json}:/app/config/gcs-credentials.json:ro
+    networks:
+      - reductrai
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ai-query:
+    image: reductrai/ai-query:${REDUCTRAI_VERSION:-latest}
+    container_name: reductrai-ai-query
+    restart: always
+    profiles: ["ai"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    ports:
+      - "8081:8081"
+    environment:
+      OLLAMA_HOST: ${OLLAMA_HOST:-http://ollama:11434}
+      AI_MODEL: ${AI_MODEL:-mistral}
+      AI_QUERY_PORT: ${AI_QUERY_PORT:-8081}
+    volumes:
+      - ai-models:/models
+      - reductrai-data:/app/data:ro
+    networks:
+      - reductrai
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O-", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  ollama:
+    image: reductrai/ollama:${REDUCTRAI_VERSION:-latest}
+    container_name: reductrai-ollama
+    restart: always
+    profiles: ["ai"]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    networks:
+      - reductrai
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 8G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  reductrai:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.30.0.0/16
+
+volumes:
+  reductrai-data:
+    driver: local
+  ollama-data:
+    driver: local
+  ai-models:
+    driver: local
